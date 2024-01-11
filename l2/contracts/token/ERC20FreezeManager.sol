@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.10;
 
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 /// @notice Contains administrative methods to retrieve and control the state of the bridging
 contract ERC20FreezeManager is Initializable, AccessControlUpgradeable {

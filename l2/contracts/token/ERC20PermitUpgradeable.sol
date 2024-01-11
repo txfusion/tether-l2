@@ -7,8 +7,8 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-IERC20P
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/SignatureCheckerUpgradeable.sol";
 
-import {ERC20CoreUpgradeable} from "./ERC20CoreUpgradeable.sol";
-import {NoncesUpgradeable} from "./utils/NoncesUpgradable.sol";
+import { ERC20CoreUpgradeable } from "./ERC20CoreUpgradeable.sol";
+import { NoncesUpgradeable } from "./utils/NoncesUpgradable.sol";
 
 /**
  * @dev Implementation of the ERC20 Permit extension allowing approvals to be made via signatures, as defined in
@@ -27,9 +27,7 @@ contract ERC20PermitUpgradeable is
 {
     // solhint-disable-next-line var-name-mixedcase
     bytes32 private constant _PERMIT_TYPEHASH =
-        keccak256(
-            "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
-        );
+        keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
     /**
      * @dev Permit deadline has expired.
@@ -45,9 +43,7 @@ contract ERC20PermitUpgradeable is
         __EIP712_init_unchained(name, "1");
     }
 
-    function __ERC20Permit_init_unchained(
-        string memory
-    ) internal onlyInitializing {}
+    function __ERC20Permit_init_unchained(string memory) internal onlyInitializing {}
 
     /**
      * @dev See {IERC20Permit-permit}.
@@ -69,25 +65,12 @@ contract ERC20PermitUpgradeable is
             revert ERC2612ExpiredSignature(deadline);
         }
 
-        bytes32 structHash = keccak256(
-            abi.encode(
-                _PERMIT_TYPEHASH,
-                owner,
-                spender,
-                value,
-                _useNonce(owner),
-                deadline
-            )
-        );
+        bytes32 structHash = keccak256(abi.encode(_PERMIT_TYPEHASH, owner, spender, value, _useNonce(owner), deadline));
 
         bytes32 hash = _hashTypedDataV4(structHash);
 
         require(
-            SignatureCheckerUpgradeable.isValidSignatureNow(
-                owner,
-                hash,
-                abi.encodePacked(r, s, v)
-            ),
+            SignatureCheckerUpgradeable.isValidSignatureNow(owner, hash, abi.encodePacked(r, s, v)),
             "ERC20Permit: invalid signature"
         );
 
@@ -99,13 +82,7 @@ contract ERC20PermitUpgradeable is
      */
     function nonces(
         address owner
-    )
-        public
-        view
-        virtual
-        override(IERC20PermitUpgradeable, NoncesUpgradeable)
-        returns (uint256)
-    {
+    ) public view virtual override(IERC20PermitUpgradeable, NoncesUpgradeable) returns (uint256) {
         return super.nonces(owner);
     }
 

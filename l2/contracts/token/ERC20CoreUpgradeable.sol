@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.10;
 
-import {ERC20FreezeManager} from "./ERC20FreezeManager.sol";
+import { ERC20FreezeManager } from "./ERC20FreezeManager.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 /// @notice Upgradable version of contract that contains the required logic of the ERC20 standard as defined in the EIP.
@@ -82,13 +82,11 @@ contract ERC20CoreUpgradeable is IERC20Upgradeable, ERC20FreezeManager {
     /// @param from_ An address of the sender of the tokens
     /// @param to_  An address of the recipient of the tokens
     /// @param amount_ An amount of tokens to transfer
-    function _transfer(address from_, address to_, uint256 amount_)
-        internal
-        onlyNonZeroAccount(from_)
-        onlyNonZeroAccount(to_)
-        onlyNotFrozen(from_)
-        onlyNotFrozen(to_)
-    {
+    function _transfer(
+        address from_,
+        address to_,
+        uint256 amount_
+    ) internal onlyNonZeroAccount(from_) onlyNonZeroAccount(to_) onlyNotFrozen(from_) onlyNotFrozen(to_) {
         _decreaseBalance(from_, amount_);
         balanceOf[to_] += amount_;
         emit Transfer(from_, to_, amount_);
@@ -116,12 +114,11 @@ contract ERC20CoreUpgradeable is IERC20Upgradeable, ERC20FreezeManager {
     /// @param owner_ An address of the account to set allowance
     /// @param spender_  An address of the tokens spender
     /// @param amount_ An amount of tokens to allow to spend
-    function _approve(address owner_, address spender_, uint256 amount_)
-        internal
-        virtual
-        onlyNonZeroAccount(owner_)
-        onlyNonZeroAccount(spender_)
-    {
+    function _approve(
+        address owner_,
+        address spender_,
+        uint256 amount_
+    ) internal virtual onlyNonZeroAccount(owner_) onlyNonZeroAccount(spender_) {
         allowance[owner_][spender_] = amount_;
         emit Approval(owner_, spender_, amount_);
     }
