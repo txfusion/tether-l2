@@ -1,119 +1,33 @@
-import hre from "hardhat";
 import { assert, expect } from "chai";
-import { Wallet, Provider, Contract, utils } from "zksync-web3";
-import { Deployer } from "@matterlabs/hardhat-zksync-deploy";
+import { Contract } from "zksync-web3";
 import { ethers } from "ethers";
 import { describe } from "mocha";
-
-import { richWallet } from "../../l1/scripts/utils/rich_wallet";
-import { wei } from "../../../utils/wei";
-import { L2_TOKEN_NAME, L2_TOKEN_SYMBOL } from "./utils/constants";
-
-const TESTNET_PROVIDER_URL = "http://localhost:3050";
+import { setup } from "./utils/bridge.setup";
 
 describe("ZkSync :: L2ERC20Bridge", async () => {
-  async function setup() {
-    const provider = new Provider(TESTNET_PROVIDER_URL);
-
-    const deployerWallet = new Wallet(richWallet[0].privateKey, provider);
-    const governor = new Wallet(richWallet[1].privateKey, provider);
-    const sender = new Wallet(richWallet[2].privateKey, provider);
-    const recipient = new Wallet(richWallet[3].privateKey, provider);
-    const stranger = new Wallet(richWallet[4].privateKey, provider);
-
-    const deployer = new Deployer(hre, deployerWallet);
-
-    // L2 Token
-    const L2TokenArtifact = await deployer.loadArtifact("ERC20BridgedStub");
-    const L2TokenContract = await deployer.deploy(L2TokenArtifact, [
-      L2_TOKEN_NAME,
-      L2_TOKEN_SYMBOL,
-    ]);
-
-    const l2Token = await L2TokenContract.deployed();
-
-    // L1 Token
-    const emptyContractStubArtifact = await deployer.loadArtifact(
-      "EmptyContractStub"
-    );
-    const l1TokenImplContract = await deployer.deploy(
-      emptyContractStubArtifact
-    );
-    const l1Token = await l1TokenImplContract.deployed();
-
-    const ossifiableProxyArtifact = await deployer.loadArtifact(
-      "OssifiableProxy"
-    );
-
-    // L1 Bridge
-    const L1ERC20BridgeStubArtifact = await deployer.loadArtifact(
-      "L1ERC20BridgeStub"
-    );
-    const l1BridgeContract = await deployer.deploy(L1ERC20BridgeStubArtifact);
-    const l1Bridge = await l1BridgeContract.deployed();
-    const l1BridgeContractWrong = await deployer.deploy(
-      L1ERC20BridgeStubArtifact
-    );
-    const l1BridgeWrong = await l1BridgeContractWrong.deployed();
-
-    const L1BridgeAddress = utils.undoL1ToL2Alias(l1Bridge.address);
-
-    // L2 Bridge
-    const l2ERC20BridgeArtifact = await deployer.loadArtifact("L2ERC20Bridge");
-    const l2Erc20BridgeImplContract = await deployer.deploy(
-      l2ERC20BridgeArtifact,
-      []
-    );
-    const l2Erc20BridgeImpl = await l2Erc20BridgeImplContract.deployed();
-
-    // proxy
-    const l2Erc20BridgeProxyContract = await deployer.deploy(
-      ossifiableProxyArtifact,
-      [l2Erc20BridgeImpl.address, governor.address, "0x"]
-    );
-    const l2Erc20BridgeProxy = await l2Erc20BridgeProxyContract.deployed();
-
-    const l2Erc20Bridge = new Contract(
-      l2Erc20BridgeProxy.address,
-      l2ERC20BridgeArtifact.abi,
-      deployer.zkWallet
-    );
-
-    const initTx = await l2Erc20Bridge.initialize(
-      ethers.utils.getAddress(L1BridgeAddress),
-      l1Token.address,
-      l2Token.address,
-      deployerWallet.address
-    );
-
-    await initTx.wait();
-
-    await (await l2Token.setBridge(l2Erc20Bridge.address)).wait();
-
-    return {
-      accounts: {
-        deployerWallet,
-        governor,
-        recipient,
-        sender,
-        stranger,
-      },
-      stubs: {
-        l1Bridge: ethers.utils.getAddress(L1BridgeAddress),
-        l1Token: l1Token,
-        l2Token: l2Token,
-      },
-      l2Erc20Bridge,
-      l1Erc20Bridge: l1Bridge,
-      l1Erc20BridgeWrong: l1BridgeWrong,
-      gasLimit: 10_000_000,
-    };
-  }
-
   let context: Awaited<ReturnType<typeof setup>>;
 
   before("Setting up the context", async () => {
     context = await setup();
+  });
+
+  beforeEach("re-enable deposits/withdrawals", async () => {
+    const {
+      l2Erc20Bridge,
+      accounts: { deployerWallet },
+    } = context;
+
+    await enableDepositsWithAssertions(
+      l2Erc20Bridge,
+      deployerWallet.address,
+      deployerWallet.address
+    );
+
+    await enableWithdrawalsWithAssertions(
+      l2Erc20Bridge,
+      deployerWallet.address,
+      deployerWallet.address
+    );
   });
 
   it("l1Bridge()", async () => {
@@ -183,9 +97,9 @@ describe("ZkSync :: L2ERC20Bridge", async () => {
       deployerWallet.address,
       deployerWallet.address
     );
-    const amount = wei`1 ether`;
-    const l2TxGasLimit = wei`1000 gwei`;
-    const l2TxGasPerPubdataByte = wei`800 wei`;
+    const amount = ethers.utils.parseUnits("1", "ether");
+    const l2TxGasLimit = ethers.utils.parseUnits("1000", "gwei");
+    const l2TxGasPerPubdataByte = ethers.utils.parseUnits("800", "wei");
 
     const wrongL1TokenAddress = accounts.stranger.address;
 
@@ -214,9 +128,9 @@ describe("ZkSync :: L2ERC20Bridge", async () => {
       deployerWallet.address,
       deployerWallet.address
     );
-    const amount = wei`1 ether`;
-    const l2TxGasLimit = wei`1000 gwei`;
-    const l2TxGasPerPubdataByte = wei`800 wei`;
+    const amount = ethers.utils.parseUnits("1", "ether");
+    const l2TxGasLimit = ethers.utils.parseUnits("1000", "gwei");
+    const l2TxGasPerPubdataByte = ethers.utils.parseUnits("800", "wei");
 
     expect(
       await l1Erc20BridgeWrong.deposit(
@@ -242,10 +156,10 @@ describe("ZkSync :: L2ERC20Bridge", async () => {
       deployerWallet.address,
       deployerWallet.address
     );
-    const amount = wei`1 ether`;
-    const l2TxGasLimit = wei`1000 gwei`;
-    const l2TxGasPerPubdataByte = wei`800 wei`;
-    const ethValue = ethers.utils.parseEther("1.0");
+    const amount = ethers.utils.parseUnits("1", "ether");
+    const l2TxGasLimit = ethers.utils.parseUnits("1000", "gwei");
+    const l2TxGasPerPubdataByte = ethers.utils.parseUnits("800", "wei");
+    const ethValue = ethers.utils.parseUnits("1", "ether");
 
     await expect(
       l1Erc20Bridge.deposit(
@@ -272,9 +186,9 @@ describe("ZkSync :: L2ERC20Bridge", async () => {
       deployerWallet.address
     );
 
-    const amount = wei`1 ether`;
-    const l2TxGasLimit = wei`1000 gwei`;
-    const l2TxGasPerPubdataByte = wei`800 wei`;
+    const amount = ethers.utils.parseUnits("1", "ether");
+    const l2TxGasLimit = ethers.utils.parseUnits("1000", "gwei");
+    const l2TxGasPerPubdataByte = ethers.utils.parseUnits("800", "wei");
     // changes in token supply between two transactions
     let deltaL2TokenSupply;
     const l2TotalSupplyBefore = await stubs.l2Token.totalSupply();
@@ -358,7 +272,7 @@ describe("ZkSync :: L2ERC20Bridge", async () => {
       deployerWallet.address,
       deployerWallet.address
     );
-    const amount = wei`1 ether`;
+    const amount = ethers.utils.parseUnits("1", "ether");
     const wrongTokenAddress = stubs.l1Token.address;
 
     await expect(
@@ -384,7 +298,7 @@ describe("ZkSync :: L2ERC20Bridge", async () => {
       deployerWallet.address
     );
 
-    const amount = wei`0.5 ether`;
+    const amount = ethers.utils.parseUnits("0.5", "ether");
 
     // changes in token supply between two transactions
     let deltaL2TokenSupply;

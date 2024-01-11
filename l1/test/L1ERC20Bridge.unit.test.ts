@@ -1,82 +1,58 @@
 import hre, { ethers } from "hardhat";
-import { wei } from "../../../utils/wei";
-import { unit } from "../../../utils/testing";
 import { assert, expect } from "chai";
-import * as path from "path";
-import { L1ERC20Bridge__factory, ZkSyncStub__factory } from "../typechain";
-import {
-  EmptyContractStub__factory,
-  ERC20BridgedStub__factory,
-  OssifiableProxy__factory,
-} from "../../../typechain";
-import { L2ERC20BridgeStub__factory } from "../../l2/typechain";
-import { readBytecode } from "../scripts/utils/utils";
+import { setup } from "./utils/unit.setup";
 
-const commonArtifactsPath = path.join(
-  path.resolve(__dirname, "../.."),
-  "l2/artifacts-zk/common"
-);
+describe("ZkSync :: L1ERC20Bridge", async () => {
+  let ctx: Awaited<ReturnType<typeof setup>>;
 
-// zksync/l2/artifacts-zk/l2/contracts
-const l2ArtifactsPath = path.join(
-  path.resolve(__dirname, "../.."),
-  "l2/artifacts-zk/l2/contracts"
-);
+  beforeEach("Setting up the context", async () => {
+    ctx = await setup();
+  });
 
-const L2_BRIDGE_PROXY_BYTECODE = readBytecode(
-  path.join(commonArtifactsPath, "proxy"),
-  "OssifiableProxy"
-);
+  it("zkSync()", async () => {
+    const { l1Erc20Bridge, stubs } = ctx;
+    assert.equal(await l1Erc20Bridge.zkSync(), stubs.zkSync.address);
+  });
 
-const L2_BRIDGE_STUB_BYTECODE = readBytecode(
-  path.join(l2ArtifactsPath, "stubs"),
-  "L2ERC20BridgeStub"
-);
+  it("l1Token()", async () => {
+    const { l1Erc20Bridge, stubs } = ctx;
+    assert.equal(await l1Erc20Bridge.l1Token(), stubs.l1Token.address);
+  });
 
-const L1_TOKEN_STUB_NAME = "ERC20 Mock";
-const L1_TOKEN_STUB_SYMBOL = "ERC20";
+  it("l2Token()", async () => {
+    const { l1Erc20Bridge, stubs } = ctx;
+    assert.equal(await l1Erc20Bridge.l2Token(), stubs.l2Token.address);
+  });
 
-unit("ZkSync :: L1ERC20Bridge", ctxFactory)
-  .test("zkSync()", async (ctx) => {
-    assert.equal(await ctx.l1Erc20Bridge.zkSync(), ctx.stubs.zkSync.address);
-  })
+  it("l2Bridge()", async () => {
+    const { l1Erc20Bridge, stubs } = ctx;
+    assert.equal(await l1Erc20Bridge.l2Bridge(), stubs.l2Erc20Bridge.address);
+  });
 
-  .test("l1Token()", async (ctx) => {
-    assert.equal(await ctx.l1Erc20Bridge.l1Token(), ctx.stubs.l1Token.address);
-  })
-
-  .test("l2Token()", async (ctx) => {
-    assert.equal(await ctx.l1Erc20Bridge.l2Token(), ctx.stubs.l2Token.address);
-  })
-
-  .test("l2Bridge()", async (ctx) => {
-    assert.equal(
-      await ctx.l1Erc20Bridge.l2Bridge(),
-      ctx.stubs.l2Erc20Bridge.address
-    );
-  })
-
-  .test("l2TokenAddress() :: correct l1Token", async (ctx) => {
-    const actualL2TokenAddress = await ctx.l1Erc20Bridge.l2TokenAddress(
-      ctx.stubs.l1Token.address
+  it("l2TokenAddress() :: correct l1Token", async () => {
+    const { l1Erc20Bridge, stubs } = ctx;
+    const actualL2TokenAddress = await l1Erc20Bridge.l2TokenAddress(
+      stubs.l1Token.address
     );
 
-    assert.equal(actualL2TokenAddress, ctx.stubs.l2Token.address);
-  })
+    assert.equal(actualL2TokenAddress, stubs.l2Token.address);
+  });
 
-  .test("l2TokenAddress() :: incorrect l1Token", async (ctx) => {
-    const actualL2TokenAddress = await ctx.l1Erc20Bridge.l2TokenAddress(
-      ctx.accounts.stranger.address
+  it("l2TokenAddress() :: incorrect l1Token", async () => {
+    const { l1Erc20Bridge, accounts } = ctx;
+    const actualL2TokenAddress = await l1Erc20Bridge.l2TokenAddress(
+      accounts.stranger.address
     );
 
     assert.equal(actualL2TokenAddress, hre.ethers.constants.AddressZero);
-  })
+  });
 
-  .test("deposit() :: deposits enabled", async (ctx) => {
-    assert.isTrue(await ctx.l1Erc20Bridge.isDepositsEnabled());
-  })
+  it("deposit() :: deposits enabled", async () => {
+    const { l1Erc20Bridge } = ctx;
+    assert.isTrue(await l1Erc20Bridge.isDepositsEnabled());
+  });
 
-  .test("deposit() :: disable deposits", async (ctx) => {
+  it("deposit() :: disable deposits", async () => {
     const {
       accounts: { deployer },
       l1Erc20Bridge,
@@ -95,16 +71,16 @@ unit("ZkSync :: L1ERC20Bridge", ctxFactory)
     await l1Erc20Bridge.disableDeposits();
 
     assert.isFalse(await l1Erc20Bridge.isDepositsEnabled());
-  })
+  });
 
-  .test("deposit() :: wrong l1Token address", async (ctx) => {
+  it("deposit() :: wrong l1Token address", async () => {
     const {
       accounts: { sender, recipient, stranger: wrongL1Token },
       l1Erc20Bridge,
     } = ctx;
-    const amount = wei`1 ether`;
-    const l2TxGasLimit = wei`1000 gwei`;
-    const l2TxGasPerPubdataByte = wei`800 wei`;
+    const amount = ethers.utils.parseUnits("1", "ether");
+    const l2TxGasLimit = ethers.utils.parseUnits("1000", "gwei");
+    const l2TxGasPerPubdataByte = ethers.utils.parseUnits("800", "wei");
 
     await expect(
       l1Erc20Bridge["deposit(address,address,uint256,uint256,uint256,address)"](
@@ -116,16 +92,16 @@ unit("ZkSync :: L1ERC20Bridge", ctxFactory)
         sender.address
       )
     ).to.be.revertedWith("ErrorUnsupportedL1Token");
-  })
+  });
 
-  .test("deposit() :: wrong (zero) deposit amount", async (ctx) => {
+  it("deposit() :: wrong (zero) deposit amount", async () => {
     const {
       accounts: { sender, recipient },
       l1Erc20Bridge,
     } = ctx;
-    const wrongAmount = "0";
-    const l2TxGasLimit = wei`1000 gwei`;
-    const l2TxGasPerPubdataByte = wei`800 wei`;
+    const wrongAmount = ethers.utils.parseUnits("0", "ether");
+    const l2TxGasLimit = ethers.utils.parseUnits("1000", "gwei");
+    const l2TxGasPerPubdataByte = ethers.utils.parseUnits("800", "wei");
 
     await expect(
       l1Erc20Bridge["deposit(address,address,uint256,uint256,uint256,address)"](
@@ -137,16 +113,16 @@ unit("ZkSync :: L1ERC20Bridge", ctxFactory)
         sender.address
       )
     ).to.be.revertedWith("The deposit amount can't be zero");
-  })
+  });
 
-  .test("deposit() :: insufficient token allowance for bridge", async (ctx) => {
+  it("deposit() :: insufficient token allowance for bridge", async () => {
     const {
       accounts: { sender, recipient },
       l1Erc20Bridge,
     } = ctx;
-    const amount = wei`1 ether`;
-    const l2TxGasLimit = wei`1000 gwei`;
-    const l2TxGasPerPubdataByte = wei`800 wei`;
+    const amount = ethers.utils.parseUnits("1", "ether");
+    const l2TxGasLimit = ethers.utils.parseUnits("1000", "gwei");
+    const l2TxGasPerPubdataByte = ethers.utils.parseUnits("800", "wei");
 
     await expect(
       l1Erc20Bridge["deposit(address,address,uint256,uint256,uint256,address)"](
@@ -158,18 +134,18 @@ unit("ZkSync :: L1ERC20Bridge", ctxFactory)
         sender.address
       )
     ).to.be.revertedWith("ERC20: insufficient allowance");
-  })
+  });
 
-  .test("deposit() :: works as expected", async (ctx) => {
+  it("deposit() :: works as expected", async () => {
     const {
       accounts: { sender, recipient },
       stubs: { zkSync, l2Erc20Bridge, l1Token },
       l1Erc20Bridge,
     } = ctx;
-    const amount = wei`1 ether`;
-    const l2TxGasLimit = wei`1000 gwei`;
-    const l2TxGasPerPubdataByte = wei`800 wei`;
-    const value = wei`250_000 gwei`;
+    const amount = ethers.utils.parseUnits("1", "ether");
+    const l2TxGasLimit = ethers.utils.parseUnits("1000", "gwei");
+    const l2TxGasPerPubdataByte = ethers.utils.parseUnits("800", "wei");
+    const value = ethers.utils.parseUnits("250000", "gwei");
 
     const senderBalanceBefore = await l1Token.balanceOf(sender.address);
     const bridgeBalanceBefore = await l1Token.balanceOf(l1Erc20Bridge.address);
@@ -266,13 +242,14 @@ unit("ZkSync :: L1ERC20Bridge", ctxFactory)
         .add(amount)
         .toString()}`
     );
-  })
+  });
 
-  .test("finalizeWithdrawal() :: withdrawals enabled", async (ctx) => {
-    assert.isTrue(await ctx.l1Erc20Bridge.isWithdrawalsEnabled());
-  })
+  it("finalizeWithdrawal() :: withdrawals enabled", async () => {
+    const { l1Erc20Bridge } = ctx;
+    assert.isTrue(await l1Erc20Bridge.isWithdrawalsEnabled());
+  });
 
-  .test("finalizeWithdrawal() :: disable withdrawals", async (ctx) => {
+  it("finalizeWithdrawal() :: disable withdrawals", async () => {
     const {
       accounts: { deployer },
       l1Erc20Bridge,
@@ -291,136 +268,123 @@ unit("ZkSync :: L1ERC20Bridge", ctxFactory)
     await l1Erc20Bridge.disableWithdrawals();
 
     assert.isFalse(await l1Erc20Bridge.isWithdrawalsEnabled());
-  })
+  });
 
-  .test(
-    "finalizeWithdrawal() :: not enough ETH locked on L1 bridge",
-    async (ctx) => {
-      const {
-        accounts: { recipient },
-        stubs: { l1Token },
-        l1Erc20Bridge,
-      } = ctx;
+  it("finalizeWithdrawal() :: not enough ETH locked on L1 bridge", async () => {
+    const {
+      accounts: { recipient },
+      stubs: { l1Token },
+      l1Erc20Bridge,
+    } = ctx;
+    const amount = ethers.utils.parseUnits("1", "ether");
 
-      const amount = wei`1 ether`;
+    const l2BlockNumber = ethers.BigNumber.from("1");
+    const l2MessageIndex = ethers.BigNumber.from("1");
+    const l2TxNumberInBlock = 1;
+    const merkleProof = [
+      ethers.utils.formatBytes32String("proof1"),
+      ethers.utils.formatBytes32String("proof2"),
+    ];
 
-      const l2BlockNumber = ethers.BigNumber.from("1");
-      const l2MessageIndex = ethers.BigNumber.from("1");
-      const l2TxNumberInBlock = 1;
-      const merkleProof = [
-        ethers.utils.formatBytes32String("proof1"),
-        ethers.utils.formatBytes32String("proof2"),
-      ];
+    const l1Erc20BridgeInterface = l1Erc20Bridge.interface;
+    const withdrawMessage = ethers.utils.solidityPack(
+      ["bytes4", "address", "address", "uint256"],
+      [
+        l1Erc20BridgeInterface.getSighash(
+          l1Erc20BridgeInterface.getFunction("finalizeWithdrawal")
+        ),
+        recipient.address,
+        l1Token.address,
+        amount,
+      ]
+    );
 
-      const l1Erc20BridgeInterface = l1Erc20Bridge.interface;
-      const withdrawMessage = ethers.utils.solidityPack(
-        ["bytes4", "address", "address", "uint256"],
-        [
-          l1Erc20BridgeInterface.getSighash(
-            l1Erc20BridgeInterface.getFunction("finalizeWithdrawal")
-          ),
-          recipient.address,
-          l1Token.address,
-          amount,
-        ]
+    await expect(
+      l1Erc20Bridge.finalizeWithdrawal(
+        l2BlockNumber,
+        l2MessageIndex,
+        l2TxNumberInBlock,
+        withdrawMessage,
+        merkleProof
+      )
+    ).to.be.revertedWith("ERC20: transfer amount exceeds balance");
+  });
+
+  it("finalizeWithdrawal() :: works as expected (called by stranger)", async () => {
+    const {
+      accounts: { recipient, stranger },
+      stubs: { l1Token },
+      l1Erc20Bridge,
+    } = ctx;
+
+    const amount = ethers.utils.parseUnits("1", "ether");
+
+    const recipientBalanceBefore = await l1Token.balanceOf(recipient.address);
+    // transfer tokens to L1 bridge to simulate locked funds
+    await l1Token.transfer(l1Erc20Bridge.address, amount);
+    const bridgeBalanceBefore = await l1Token.balanceOf(l1Erc20Bridge.address);
+
+    const l2BlockNumber = ethers.BigNumber.from("1");
+    const l2MessageIndex = ethers.BigNumber.from("1");
+    const l2TxNumberInBlock = 1;
+    const merkleProof = [
+      ethers.utils.formatBytes32String("proof1"),
+      ethers.utils.formatBytes32String("proof2"),
+    ];
+
+    const l1Erc20BridgeInterface = l1Erc20Bridge.interface;
+    const withdrawMessage = ethers.utils.solidityPack(
+      ["bytes4", "address", "address", "uint256"],
+      [
+        l1Erc20BridgeInterface.getSighash(
+          l1Erc20BridgeInterface.getFunction("finalizeWithdrawal")
+        ),
+        recipient.address,
+        l1Token.address,
+        amount,
+      ]
+    );
+
+    const finalizeWithdrawalTx = await l1Erc20Bridge
+      .connect(stranger)
+      .finalizeWithdrawal(
+        l2BlockNumber,
+        l2MessageIndex,
+        l2TxNumberInBlock,
+        withdrawMessage,
+        merkleProof
       );
 
-      await expect(
-        l1Erc20Bridge.finalizeWithdrawal(
-          l2BlockNumber,
-          l2MessageIndex,
-          l2TxNumberInBlock,
-          withdrawMessage,
-          merkleProof
-        )
-      ).to.be.revertedWith("ERC20: transfer amount exceeds balance");
-    }
-  )
+    // validate withdrawal marked as finalized
+    assert.isTrue(
+      await l1Erc20Bridge.isWithdrawalFinalized(l2BlockNumber, l2MessageIndex)
+    );
 
-  .test(
-    "finalizeWithdrawal() :: works as expected (called by stranger)",
-    async (ctx) => {
-      const {
-        accounts: { recipient, stranger },
-        stubs: { l1Token },
-        l1Erc20Bridge,
-      } = ctx;
+    // validate WithdrawalFinalized event is emitted with the expected data
+    await expect(finalizeWithdrawalTx)
+      .to.emit(l1Erc20Bridge, "WithdrawalFinalized")
+      .withArgs(recipient.address, l1Token.address, amount);
 
-      const amount = wei`1 ether`;
+    const recipientL1TokenBalance = await l1Token.balanceOf(recipient.address);
+    const bridgeL1TokenBalance = await l1Token.balanceOf(l1Erc20Bridge.address);
 
-      const recipientBalanceBefore = await l1Token.balanceOf(recipient.address);
-      // transfer tokens to L1 bridge to simulate locked funds
-      await l1Token.transfer(l1Erc20Bridge.address, amount);
-      const bridgeBalanceBefore = await l1Token.balanceOf(
-        l1Erc20Bridge.address
-      );
+    // validate balance of the recipient increased
+    expect(
+      recipientL1TokenBalance.eq(recipientBalanceBefore.add(amount)),
+      `Value ${recipientL1TokenBalance.toString()} is not equal to ${recipientBalanceBefore
+        .add(amount)
+        .toString()}`
+    );
 
-      const l2BlockNumber = ethers.BigNumber.from("1");
-      const l2MessageIndex = ethers.BigNumber.from("1");
-      const l2TxNumberInBlock = 1;
-      const merkleProof = [
-        ethers.utils.formatBytes32String("proof1"),
-        ethers.utils.formatBytes32String("proof2"),
-      ];
+    expect(
+      bridgeL1TokenBalance.eq(bridgeBalanceBefore.sub(amount)),
+      `Value ${bridgeL1TokenBalance.toString()} is not equal to ${bridgeBalanceBefore
+        .sub(amount)
+        .toString()}`
+    );
+  });
 
-      const l1Erc20BridgeInterface = l1Erc20Bridge.interface;
-      const withdrawMessage = ethers.utils.solidityPack(
-        ["bytes4", "address", "address", "uint256"],
-        [
-          l1Erc20BridgeInterface.getSighash(
-            l1Erc20BridgeInterface.getFunction("finalizeWithdrawal")
-          ),
-          recipient.address,
-          l1Token.address,
-          amount,
-        ]
-      );
-
-      const finalizeWithdrawalTx = await l1Erc20Bridge
-        .connect(stranger)
-        .finalizeWithdrawal(
-          l2BlockNumber,
-          l2MessageIndex,
-          l2TxNumberInBlock,
-          withdrawMessage,
-          merkleProof
-        );
-
-      // validate withdrawal marked as finalized
-      assert.isTrue(
-        await l1Erc20Bridge.isWithdrawalFinalized(l2BlockNumber, l2MessageIndex)
-      );
-
-      // validate WithdrawalFinalized event is emitted with the expected data
-      await expect(finalizeWithdrawalTx)
-        .to.emit(l1Erc20Bridge, "WithdrawalFinalized")
-        .withArgs(recipient.address, l1Token.address, amount);
-
-      const recipientL1TokenBalance = await l1Token.balanceOf(
-        recipient.address
-      );
-      const bridgeL1TokenBalance = await l1Token.balanceOf(
-        l1Erc20Bridge.address
-      );
-
-      // validate balance of the recipient increased
-      expect(
-        recipientL1TokenBalance.eq(recipientBalanceBefore.add(amount)),
-        `Value ${recipientL1TokenBalance.toString()} is not equal to ${recipientBalanceBefore
-          .add(amount)
-          .toString()}`
-      );
-
-      expect(
-        bridgeL1TokenBalance.eq(bridgeBalanceBefore.sub(amount)),
-        `Value ${bridgeL1TokenBalance.toString()} is not equal to ${bridgeBalanceBefore
-          .sub(amount)
-          .toString()}`
-      );
-    }
-  )
-
-  .test("claimFailedDeposit() :: nothing to claim", async (ctx) => {
+  it("claimFailedDeposit() :: nothing to claim", async () => {
     const {
       accounts: { sender },
       stubs: { l1Token },
@@ -447,18 +411,18 @@ unit("ZkSync :: L1ERC20Bridge", ctxFactory)
         merkleProof
       )
     ).to.be.revertedWith("The claimed amount can't be zero");
-  })
+  });
 
-  .test("claimFailedDeposit() :: works us expected", async (ctx) => {
+  it("claimFailedDeposit() :: works us expected", async () => {
     const {
       accounts: { sender, recipient },
       stubs: { zkSync, l1Token },
       l1Erc20Bridge,
     } = ctx;
-    const amount = wei`1 ether`;
-    const l2TxGasLimit = wei`1000 gwei`;
-    const l2TxGasPerPubdataByte = wei`800 wei`;
-    const value = wei`250_000 gwei`;
+    const amount = ethers.utils.parseUnits("1", "ether");
+    const l2TxGasLimit = ethers.utils.parseUnits("1000", "gwei");
+    const l2TxGasPerPubdataByte = ethers.utils.parseUnits("800", "wei");
+    const value = ethers.utils.parseUnits("250000", "gwei");
 
     await l1Token.connect(sender)["approve"](l1Erc20Bridge.address, amount);
 
@@ -552,70 +516,5 @@ unit("ZkSync :: L1ERC20Bridge", ctxFactory)
         .sub(amount)
         .toString()}`
     );
-  })
-
-  .run();
-
-async function ctxFactory() {
-  const [deployer, governor, sender, recipient, stranger] =
-    await hre.ethers.getSigners();
-
-  const zkSyncStub = await new ZkSyncStub__factory(deployer).deploy();
-
-  const l2TokenStub = await new EmptyContractStub__factory(deployer).deploy();
-  const l1TokenStub = await new ERC20BridgedStub__factory(deployer).deploy(
-    L1_TOKEN_STUB_NAME,
-    L1_TOKEN_STUB_SYMBOL
-  );
-
-  await l1TokenStub.transfer(sender.address, wei`100 ether`);
-
-  const l1Erc20BridgeImpl = await new L1ERC20Bridge__factory(deployer).deploy();
-
-  const requiredValueToInitializeBridge =
-    await zkSyncStub.l2TransactionBaseCost(0, 0, 0);
-
-  const l1Erc20BridgeProxy = await new OssifiableProxy__factory(
-    deployer
-  ).deploy(l1Erc20BridgeImpl.address, governor.address, "0x");
-
-  const l1Erc20Bridge = L1ERC20Bridge__factory.connect(
-    l1Erc20BridgeProxy.address,
-    deployer
-  );
-
-  const initTx = await l1Erc20Bridge.initialize(
-    [L2_BRIDGE_STUB_BYTECODE, L2_BRIDGE_PROXY_BYTECODE],
-    [
-      l1TokenStub.address,
-      l2TokenStub.address,
-      governor.address,
-      deployer.address,
-      zkSyncStub.address,
-    ] as any,
-    requiredValueToInitializeBridge,
-    requiredValueToInitializeBridge
-  );
-
-  await initTx.wait();
-
-  return {
-    accounts: {
-      deployer,
-      governor,
-      sender,
-      recipient,
-      stranger,
-    },
-    stubs: {
-      zkSync: zkSyncStub,
-      l1Token: l1TokenStub,
-      l2Token: l2TokenStub,
-      l2Erc20Bridge: L2ERC20BridgeStub__factory.connect(
-        await l1Erc20Bridge.l2Bridge(),
-        deployer
-      ),
-    },
-    l1Erc20Bridge,
-  };
-}
+  });
+});

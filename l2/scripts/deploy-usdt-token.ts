@@ -66,11 +66,12 @@ async function main() {
   );
 
   const initImplTx = await erc20BridgedImplementation[
-    "__ERC20BridgedUpgradeable_init(string,string,uint8)"
+    "__ERC20BridgedUpgradeable_init(string,string,uint8,address)"
   ](
     ERC20_BRIDGED_CONSTANTS.NAME,
     ERC20_BRIDGED_CONSTANTS.SYMBOL,
-    ERC20_BRIDGED_CONSTANTS.DECIMALS
+    ERC20_BRIDGED_CONSTANTS.DECIMALS,
+    adminAddress
   );
 
   await initImplTx.wait();

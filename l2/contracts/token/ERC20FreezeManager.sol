@@ -9,7 +9,7 @@ import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/acce
 contract ERC20FreezeManager is Initializable, AccessControlUpgradeable {
     event AddressFrozen(address indexed freezer, address indexed frozen);
     event AddressBurned(address indexed burner, address indexed burned);
-    event Initialized(address indexed admin);
+    event ManagerInitialized(address indexed admin);
 
     error OnlyNotFrozenAddress(address user);
     error OnlyFrozenAddress(address user);
@@ -36,7 +36,7 @@ contract ERC20FreezeManager is Initializable, AccessControlUpgradeable {
         _setRoleAdmin(ADDRESS_BURNER_ROLE, DEFAULT_ADMIN_ROLE);
         _grantRole(ADDRESS_BURNER_ROLE, admin_);
 
-        emit Initialized(admin_);
+        emit ManagerInitialized(admin_);
     }
 
     modifier onlyNotFrozen(address user) {
