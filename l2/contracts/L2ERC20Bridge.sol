@@ -5,25 +5,21 @@ pragma solidity ^0.8.10;
 import {IL1ERC20Bridge} from "./interfaces/IL1ERC20Bridge.sol";
 import {IL2ERC20Bridge} from "./interfaces/IL2ERC20Bridge.sol";
 
-import {IERC20BridgedUpgradeable} from "./interfaces/IERC20BridgedUpgradeable.sol";
+import {IERC20BridgedUpgradeable} from "./token/interfaces/IERC20BridgedUpgradeable.sol";
 
 import {BridgingManager} from "../../common/BridgingManager.sol";
-import {L2ERC20BridgeManager} from "./L2ERC20BridgeManager.sol";
 import {BridgeableTokensUpgradable} from "../../common/BridgeableTokensUpgradable.sol";
 import {L2CrossDomainEnabled} from "./L2CrossDomainEnabled.sol";
 
 /// @notice The L2 token bridge works with the L1 token bridge to enable ERC20 token bridging
 ///     between L1 and L2. Mints tokens during deposits and burns tokens during withdrawals.
 ///     Additionally, adds the methods for bridging management: enabling and disabling withdrawals/deposits
-contract L2ERC20Bridge is
-    IL2ERC20Bridge,
-    BridgingManager,
-    L2ERC20BridgeManager,
-    BridgeableTokensUpgradable,
-    L2CrossDomainEnabled
-{
+contract L2ERC20Bridge is IL2ERC20Bridge, BridgingManager, BridgeableTokensUpgradable, L2CrossDomainEnabled {
     /// @inheritdoc IL2ERC20Bridge
     address public override l1Bridge;
+
+    /// @dev burnedUser is the one who lost tokens and newTokenHolder is the one received them, so that the supply remains consistent.
+    event L2ERC20Bridge__AddressBurned(address indexed burnedUser, address indexed newTokenHolder);
 
     /// @dev Contract is expected to be used as proxy implementation.
     /// @dev Disable the initialization to prevent Parity hack.
@@ -47,7 +43,6 @@ contract L2ERC20Bridge is
 
         __BridgeableTokens_init(_l1Token, _l2Token);
         __BridgingManager_init(_admin);
-        __L2ERC20BridgeManager_init(_admin);
 
         l1Bridge = _l1TokenBridge;
     }
@@ -66,9 +61,10 @@ contract L2ERC20Bridge is
         whenDepositsEnabled
         onlySupportedL1Token(_l1Token)
         onlyFromCrossDomainAccount(l1Bridge)
-        onlyNotFrozen(_l1Sender)
-        onlyNotFrozen(_l2Receiver) // TODO: Check if this is necessary
     {
+        require(!IERC20BridgedUpgradeable(l2Token).isAddressFrozen(_l1Sender), "L1 sender is frozen");
+        require(!IERC20BridgedUpgradeable(l2Token).isAddressFrozen(_l2Receiver), "L2 receiver is frozen"); // TODO: Check if this is necessary
+
         require(msg.value == 0, "Value should be 0 for ERC20 bridge");
 
         IERC20BridgedUpgradeable(l2Token).bridgeMint(_l2Receiver, _amount);
@@ -82,8 +78,9 @@ contract L2ERC20Bridge is
         override
         whenWithdrawalsEnabled
         onlySupportedL2Token(_l2Token)
-        onlyNotFrozen(msg.sender)
     {
+        require(!IERC20BridgedUpgradeable(l2Token).isAddressFrozen(msg.sender), "Address is frozen");
+
         IERC20BridgedUpgradeable(l2Token).bridgeBurn(msg.sender, _amount);
 
         bytes memory message = _getL1WithdrawMessage(_l1Receiver, l1Token, _amount);
@@ -99,16 +96,11 @@ contract L2ERC20Bridge is
      * @param _l2Token address of the token on L2
      * @param amount_ amount to be burned
      */
-    function burnAddress(address account_, address _l2Token, uint256 amount_)
-        external
-        onlyRole(ADDRESS_BURNER_ROLE)
-        onlySupportedL2Token(_l2Token)
-        onlyFrozen(account_)
-    {
+    function burnAddress(address account_, address _l2Token, uint256 amount_) external onlySupportedL2Token(_l2Token) {
         IERC20BridgedUpgradeable(l2Token).bridgeBurn(account_, amount_);
         IERC20BridgedUpgradeable(l2Token).bridgeMint(msg.sender, amount_); // TODO: Switch implementation to burn to a custom escrow contract
 
-        emit L2ERC20BridgeManager__AddressBurned(msg.sender, account_);
+        emit L2ERC20Bridge__AddressBurned(account_, msg.sender);
     }
 
     /// @notice Encode the message for l2ToL1log sent with withdraw initialization

@@ -15,12 +15,13 @@ contract ERC20BridgedUpgradeable is IERC20BridgedUpgradeable, ERC20PermitUpgrade
     /// @param name_ The name of the token
     /// @param symbol_ The symbol of the token
     /// @param decimals_ The decimals places of the token
-    function __ERC20BridgedUpgradeable_init(string memory name_, string memory symbol_, uint8 decimals_)
+    function __ERC20BridgedUpgradeable_init(string memory name_, string memory symbol_, uint8 decimals_, address admin_)
         external
         initializer
     {
         __ERC20Metadata_init_unchained(name_, symbol_, decimals_);
         __ERC20Permit_init(name_);
+        __ERC20CoreUpgradeable_init(admin_);
     }
 
     /// @notice This function is used to integrate the previously deployed token with the bridge.
@@ -28,6 +29,11 @@ contract ERC20BridgedUpgradeable is IERC20BridgedUpgradeable, ERC20PermitUpgrade
     function __ERC20BridgedUpgradeable_init_v2(address bridge_) external reinitializer(2) {
         require(bridge_ != address(0), "Bridge address cannot be zero");
         bridge = bridge_;
+    }
+
+    /// @notice Check to see if the provided address is frozen.
+    function isAddressFrozen(address toCheck) public view returns (bool) {
+        return _isFrozen(toCheck);
     }
 
     /// @inheritdoc IERC20BridgedUpgradeable
