@@ -2,27 +2,31 @@
 
 pragma solidity ^0.8.10;
 
-import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 /// @notice Contains administrative methods to retrieve and control the state of the bridging
 contract ERC20FreezeManager is Initializable, AccessControlUpgradeable {
-    event ERC20FreezeManager__AddressFrozen(address indexed freezer, address indexed frozen);
-    event ERC20FreezeManager__AddressBurned(address indexed burner, address indexed burned);
-    event ERC20FreezeManager__Initialized(address indexed admin);
+    event AddressFrozen(address indexed freezer, address indexed frozen);
+    event AddressBurned(address indexed burner, address indexed burned);
+    event Initialized(address indexed admin);
 
-    error ERC20FreezeManager__OnlyNotFrozenAddress(address user);
-    error ERC20FreezeManager__OnlyFrozenAddress(address user);
+    error OnlyNotFrozenAddress(address user);
+    error OnlyFrozenAddress(address user);
 
-    bytes32 public constant ADDRESS_FREEZER_ROLE = keccak256("ERC20FreezeManager.ADDRESS_FREEZER_ROLE");
-    bytes32 public constant ADDRESS_BURNER_ROLE = keccak256("ERC20FreezeManager.ADDRESS_BURNER_ROLE");
+    bytes32 public constant ADDRESS_FREEZER_ROLE =
+        keccak256("ERC20FreezeManager.ADDRESS_FREEZER_ROLE");
+    bytes32 public constant ADDRESS_BURNER_ROLE =
+        keccak256("ERC20FreezeManager.ADDRESS_BURNER_ROLE");
 
     mapping(address => bool) internal s_frozenAddresses;
 
     /// @notice Initializes the contract to grant DEFAULT_ADMIN_ROLE to the admin_ address
     /// @dev This method might be called only once
     /// @param admin_ Address of the account to grant the DEFAULT_ADMIN_ROLE
-    function __ERC20FreezeManager_init(address admin_) internal onlyInitializing {
+    function __ERC20FreezeManager_init(
+        address admin_
+    ) internal onlyInitializing {
         __AccessControl_init();
         _grantRole(DEFAULT_ADMIN_ROLE, admin_);
 
@@ -32,30 +36,34 @@ contract ERC20FreezeManager is Initializable, AccessControlUpgradeable {
         _setRoleAdmin(ADDRESS_BURNER_ROLE, DEFAULT_ADMIN_ROLE);
         _grantRole(ADDRESS_BURNER_ROLE, admin_);
 
-        emit ERC20FreezeManager__Initialized(admin_);
+        emit Initialized(admin_);
     }
 
     modifier onlyNotFrozen(address user) {
         if (_isFrozen(user)) {
-            revert ERC20FreezeManager__OnlyNotFrozenAddress(user);
+            revert OnlyNotFrozenAddress(user);
         }
         _;
     }
 
     modifier onlyFrozen(address user) {
         if (!_isFrozen(user)) {
-            revert ERC20FreezeManager__OnlyFrozenAddress(user);
+            revert OnlyFrozenAddress(user);
         }
         _;
     }
 
     /// @notice Freeze the selected address.
-    function freezeAddress(address toFreeze) external onlyRole(ADDRESS_FREEZER_ROLE) {
+    function freezeAddress(
+        address toFreeze
+    ) external onlyRole(ADDRESS_FREEZER_ROLE) {
         s_frozenAddresses[toFreeze] = true;
     }
 
     /// @notice Unfreeze the selected address.
-    function unfreezeAddress(address toUnfreeze) external onlyRole(ADDRESS_FREEZER_ROLE) {
+    function unfreezeAddress(
+        address toUnfreeze
+    ) external onlyRole(ADDRESS_FREEZER_ROLE) {
         delete s_frozenAddresses[toUnfreeze];
     }
 

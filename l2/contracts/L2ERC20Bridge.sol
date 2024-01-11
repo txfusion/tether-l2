@@ -24,9 +24,10 @@ contract L2ERC20Bridge is
     address public override l1Bridge;
 
     /// @dev burnedUser is the one who lost tokens and newTokenHolder is the one received them, so that the supply remains consistent.
-    event L2ERC20Bridge__AddressBurned(
+    event BurnedFrozenTokens(
         address indexed burnedUser,
-        address indexed newTokenHolder
+        address indexed newTokenHolder,
+        uint256 amount
     );
 
     /// @dev Contract is expected to be used as proxy implementation.
@@ -125,7 +126,7 @@ contract L2ERC20Bridge is
         IERC20BridgedUpgradeable(l2Token).bridgeBurn(account_, amount_);
         IERC20BridgedUpgradeable(l2Token).bridgeMint(msg.sender, amount_); // TODO: Switch implementation to burn to a custom escrow contract
 
-        emit L2ERC20Bridge__AddressBurned(account_, msg.sender);
+        emit BurnedFrozenTokens(account_, msg.sender, amount_);
     }
 
     /// @notice Encode the message for l2ToL1log sent with withdraw initialization
