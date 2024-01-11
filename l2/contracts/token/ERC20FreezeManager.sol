@@ -11,7 +11,7 @@ contract ERC20FreezeManager is Initializable, AccessControlUpgradeable {
     event ERC20FreezeManager__AddressBurned(address indexed burner, address indexed burned);
     event ERC20FreezeManager__Initialized(address indexed admin);
 
-    error ERC20FreezeManager__NotFrozenAddress(address user);
+    error ERC20FreezeManager__OnlyNotFrozenAddress(address user);
     error ERC20FreezeManager__OnlyFrozenAddress(address user);
 
     bytes32 public constant ADDRESS_FREEZER_ROLE = keccak256("ERC20FreezeManager.ADDRESS_FREEZER_ROLE");
@@ -37,7 +37,7 @@ contract ERC20FreezeManager is Initializable, AccessControlUpgradeable {
 
     modifier onlyNotFrozen(address user) {
         if (_isFrozen(user)) {
-            revert ERC20FreezeManager__NotFrozenAddress(user);
+            revert ERC20FreezeManager__OnlyNotFrozenAddress(user);
         }
         _;
     }
