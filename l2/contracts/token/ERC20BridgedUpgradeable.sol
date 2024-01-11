@@ -2,13 +2,17 @@
 
 pragma solidity ^0.8.10;
 
-import { IERC20BridgedUpgradeable } from "./interfaces/IERC20BridgedUpgradeable.sol";
+import {IERC20BridgedUpgradeable} from "../interfaces/IERC20BridgedUpgradeable.sol";
 
-import { ERC20PermitUpgradeable } from "./ERC20PermitUpgradeable.sol";
-import { ERC20MetadataUpgradeable } from "./ERC20MetadataUpgradeable.sol";
+import {ERC20PermitUpgradeable} from "./ERC20PermitUpgradeable.sol";
+import {ERC20MetadataUpgradeable} from "./ERC20MetadataUpgradeable.sol";
 
 /// @notice Extends the ERC20Upgradeable functionality that allows the bridge to mint/burn tokens
-contract ERC20BridgedUpgradeable is IERC20BridgedUpgradeable, ERC20PermitUpgradeable, ERC20MetadataUpgradeable {
+contract ERC20BridgedUpgradeable is
+    IERC20BridgedUpgradeable,
+    ERC20PermitUpgradeable,
+    ERC20MetadataUpgradeable
+{
     /// @inheritdoc IERC20BridgedUpgradeable
     address public bridge;
 
@@ -28,7 +32,9 @@ contract ERC20BridgedUpgradeable is IERC20BridgedUpgradeable, ERC20PermitUpgrade
 
     /// @notice This function is used to integrate the previously deployed token with the bridge.
     /// @param bridge_ The bridge address which is allowed to mint/burn tokens
-    function __ERC20BridgedUpgradeable_init_v2(address bridge_) external reinitializer(2) {
+    function __ERC20BridgedUpgradeable_init_v2(
+        address bridge_
+    ) external reinitializer(2) {
         require(bridge_ != address(0), "Bridge address cannot be zero");
         bridge = bridge_;
     }
