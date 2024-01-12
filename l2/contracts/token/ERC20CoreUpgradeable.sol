@@ -3,7 +3,7 @@
 pragma solidity ^0.8.10;
 
 import {ERC20FreezeManager} from "./ERC20FreezeManager.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 /// @notice Upgradable version of contract that contains the required logic of the ERC20 standard as defined in the EIP.
 /// Additionally provides methods for direct allowance increasing/decreasing.

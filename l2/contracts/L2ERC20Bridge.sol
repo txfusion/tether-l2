@@ -2,14 +2,13 @@
 
 pragma solidity ^0.8.10;
 
-import {IL1ERC20Bridge} from "./interfaces/IL1ERC20Bridge.sol";
-import {IL2ERC20Bridge} from "./interfaces/IL2ERC20Bridge.sol";
-
+import {L2CrossDomainEnabled} from "./L2CrossDomainEnabled.sol";
 import {IERC20BridgedUpgradeable} from "./interfaces/IERC20BridgedUpgradeable.sol";
 
 import {BridgingManager} from "../../common/BridgingManager.sol";
 import {BridgeableTokensUpgradable} from "../../common/BridgeableTokensUpgradable.sol";
-import {L2CrossDomainEnabled} from "./L2CrossDomainEnabled.sol";
+import {IL1ERC20Bridge} from "../../common/interfaces/IL1ERC20Bridge.sol";
+import {IL2ERC20Bridge} from "../../common/interfaces/IL2ERC20Bridge.sol";
 
 /// @notice The L2 token bridge works with the L1 token bridge to enable ERC20 token bridging
 ///     between L1 and L2. Mints tokens during deposits and burns tokens during withdrawals.

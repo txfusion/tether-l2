@@ -2,24 +2,27 @@
 
 pragma solidity ^0.8.10;
 
-import {IL1ERC20Bridge} from "../interfaces/IL1ERC20Bridge.sol";
-import {IL2ERC20Bridge} from "../interfaces/IL2ERC20Bridge.sol";
+import {IL1ERC20Bridge} from "../../../common/interfaces/IL1ERC20Bridge.sol";
+import {IL2ERC20Bridge} from "../../../common/interfaces/IL2ERC20Bridge.sol";
 
 contract L2ERC20BridgeStub is IL2ERC20Bridge {
     address public l1Bridge;
     address public l1Token;
     address public l2Token;
+    address public admin;
 
     function initialize(
         address l1TokenBridge_,
         address l1Token_,
-        address l2Token_
+        address l2Token_,
+        address admin_
     ) external {
         require(l1Token_ != address(0), "L1 token address cannot be zero");
         require(l2Token_ != address(0), "L2 token address cannot be zero");
         l1Token = l1Token_;
         l2Token = l2Token_;
         l1Bridge = l1TokenBridge_;
+        admin = admin_;
     }
 
     function finalizeDeposit(

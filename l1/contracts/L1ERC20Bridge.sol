@@ -9,16 +9,15 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import {IL2Bridge} from "@matterlabs/zksync-contracts/l1/contracts/bridge/interfaces/IL2Bridge.sol";
-import {IL2ERC20Bridge} from "./interfaces/IL2ERC20Bridge.sol";
-
 import {IL2ContractDeployer} from "@matterlabs/zksync-contracts/l1/contracts/common/interfaces/IL2ContractDeployer.sol";
 import {UnsafeBytes} from "@matterlabs/zksync-contracts/l1/contracts/common/libraries/UnsafeBytes.sol";
 import {L2ContractHelper} from "@matterlabs/zksync-contracts/l1/contracts/common/libraries/L2ContractHelper.sol";
 import {ReentrancyGuard} from "@matterlabs/zksync-contracts/l1/contracts/common/ReentrancyGuard.sol";
 import {AddressAliasHelper} from "@matterlabs/zksync-contracts/l1/contracts/vendor/AddressAliasHelper.sol";
 import {BridgeInitializationHelper} from "@matterlabs/zksync-contracts/l1/contracts/bridge/libraries/BridgeInitializationHelper.sol";
-import {IL1ERC20Bridge} from "./interfaces/IL1ERC20Bridge.sol";
 
+import {IL1ERC20Bridge} from "../../common/interfaces/IL1ERC20Bridge.sol";
+import {IL2ERC20Bridge} from "../../common/interfaces/IL2ERC20Bridge.sol";
 import {BridgeableTokensUpgradable} from "../../common/BridgeableTokensUpgradable.sol";
 import {BridgingManager} from "../../common/BridgingManager.sol";
 

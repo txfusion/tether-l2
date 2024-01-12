@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.10;
 
-import { IERC20Metadata } from "./interfaces/IERC20Metadata.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {IERC20Metadata} from "./interfaces/IERC20Metadata.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /// @notice Upgradable version of contract that contains the optional metadata functions from the ERC20 standard
 /// @dev Uses the UnstructuredStorage pattern to store dynamic name and symbol data.
@@ -17,7 +17,8 @@ contract ERC20MetadataUpgradeable is IERC20Metadata, Initializable {
     }
 
     /// @dev Location of the slot with DynamicMetdata
-    bytes32 private constant DYNAMIC_METADATA_SLOT = bytes32(uint256(keccak256("ERC20Metdata.dynamicMetadata")) - 1);
+    bytes32 private constant DYNAMIC_METADATA_SLOT =
+        bytes32(uint256(keccak256("ERC20Metdata.dynamicMetadata")) - 1);
 
     /// @inheritdoc IERC20Metadata
     uint8 public decimals;
@@ -70,7 +71,11 @@ contract ERC20MetadataUpgradeable is IERC20Metadata, Initializable {
     }
 
     /// @dev Returns the reference to the slot with DynamicMetadta struct
-    function _loadDynamicMetadata() private pure returns (DynamicMetadata storage r) {
+    function _loadDynamicMetadata()
+        private
+        pure
+        returns (DynamicMetadata storage r)
+    {
         bytes32 slot = DYNAMIC_METADATA_SLOT;
         assembly {
             r.slot := slot
