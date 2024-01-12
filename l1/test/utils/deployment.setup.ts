@@ -19,8 +19,8 @@ const CONTRACTS_DIAMOND_PROXY_ADDR = process.env
 
 export async function setup() {
   const {
-    l1: { l1Executor, l1Bridge },
-    l2: { l2Token, govExecutor, l2Bridge },
+    l1: { l1Bridge },
+    l2: { l2Token, l2Bridge },
   } = ZKSYNC_ADDRESSES;
 
   const zkProvider = new Provider(ZKSYNC_PROVIDER_URL);
@@ -37,9 +37,6 @@ export async function setup() {
     l1: {
       proxy: {
         l1Bridge: new OssifiableProxy__factory(ethDeployer).attach(l1Bridge),
-        l1Executor: new OssifiableProxy__factory(ethDeployer).attach(
-          l1Executor
-        ),
       },
       l1Bridge: new L1ERC20Bridge__factory(ethDeployer).attach(l1Bridge),
       zkSync: IZkSyncFactory.connect(CONTRACTS_DIAMOND_PROXY_ADDR, ethDeployer),
@@ -53,9 +50,6 @@ export async function setup() {
           l2Token
         ),
         l2Bridge: new OssifiableProxy__factory(deployer).attach(l2Bridge),
-        govExecutor: new TransparentUpgradeableProxy__factory(deployer).attach(
-          govExecutor
-        ),
       },
       // CONTRACTS
       l2Token: new ERC20BridgedUpgradeable__factory(deployer).attach(l2Token),
@@ -76,8 +70,6 @@ export async function setup() {
     ethProvider,
     accounts: {
       deployer: ethDeployer,
-      l1Executor: l1Executor,
-      l2Executor: govExecutor,
     },
   };
 }
