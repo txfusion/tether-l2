@@ -7,7 +7,7 @@ import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20
 
 /// @notice Upgradable version of contract that contains the required logic of the ERC20 standard as defined in the EIP.
 /// Additionally provides methods for direct allowance increasing/decreasing.
-contract ERC20CoreUpgradeable is IERC20Upgradeable, ERC20FreezeManager {
+contract ERC20CoreUpgradeable is IERC20Upgradeable {
     error ErrorNotEnoughBalance();
     error ErrorNotEnoughAllowance();
     error ErrorAccountIsZeroAddress();
@@ -30,15 +30,6 @@ contract ERC20CoreUpgradeable is IERC20Upgradeable, ERC20FreezeManager {
         _;
     }
 
-    /**
-     * @dev Initializes the ERC20FreezeManager contract.
-     */
-    function __ERC20CoreUpgradeable_init(
-        address admin_
-    ) internal onlyInitializing {
-        __ERC20FreezeManager_init(admin_);
-    }
-
     /// @inheritdoc IERC20Upgradeable
     function approve(
         address spender_,
@@ -49,7 +40,10 @@ contract ERC20CoreUpgradeable is IERC20Upgradeable, ERC20FreezeManager {
     }
 
     /// @inheritdoc IERC20Upgradeable
-    function transfer(address to_, uint256 amount_) external returns (bool) {
+    function transfer(
+        address to_,
+        uint256 amount_
+    ) public virtual returns (bool) {
         _transfer(msg.sender, to_, amount_);
         return true;
     }
@@ -59,7 +53,7 @@ contract ERC20CoreUpgradeable is IERC20Upgradeable, ERC20FreezeManager {
         address from_,
         address to_,
         uint256 amount_
-    ) external onlyNotFrozen(from_) returns (bool) {
+    ) public virtual returns (bool) {
         _spendAllowance(from_, msg.sender, amount_);
         _transfer(from_, to_, amount_);
         return true;
@@ -105,13 +99,7 @@ contract ERC20CoreUpgradeable is IERC20Upgradeable, ERC20FreezeManager {
         address from_,
         address to_,
         uint256 amount_
-    )
-        internal
-        onlyNonZeroAccount(from_)
-        onlyNonZeroAccount(to_)
-        onlyNotFrozen(from_)
-        onlyNotFrozen(to_)
-    {
+    ) internal onlyNonZeroAccount(from_) onlyNonZeroAccount(to_) {
         _decreaseBalance(from_, amount_);
         balanceOf[to_] += amount_;
         emit Transfer(from_, to_, amount_);
@@ -158,7 +146,7 @@ contract ERC20CoreUpgradeable is IERC20Upgradeable, ERC20FreezeManager {
     function _mint(
         address account_,
         uint256 amount_
-    ) internal onlyNonZeroAccount(account_) onlyNotFrozen(account_) {
+    ) internal onlyNonZeroAccount(account_) {
         totalSupply += amount_;
         balanceOf[account_] += amount_;
         emit Transfer(address(0), account_, amount_);
@@ -170,7 +158,7 @@ contract ERC20CoreUpgradeable is IERC20Upgradeable, ERC20FreezeManager {
     function _burn(
         address account_,
         uint256 amount_
-    ) internal onlyNonZeroAccount(account_) onlyFrozen(account_) {
+    ) internal onlyNonZeroAccount(account_) {
         _decreaseBalance(account_, amount_);
         totalSupply -= amount_;
         emit Transfer(account_, address(0), amount_);

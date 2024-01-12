@@ -22,13 +22,6 @@ contract L2ERC20Bridge is
     /// @inheritdoc IL2ERC20Bridge
     address public override l1Bridge;
 
-    /// @dev burnedUser is the one who lost tokens and newTokenHolder is the one received them, so that the supply remains consistent.
-    event BurnedFrozenTokens(
-        address indexed burnedUser,
-        address indexed newTokenHolder,
-        uint256 amount
-    );
-
     /// @dev Contract is expected to be used as proxy implementation.
     /// @dev Disable the initialization to prevent Parity hack.
     constructor() {
@@ -71,15 +64,6 @@ contract L2ERC20Bridge is
         onlySupportedL1Token(_l1Token)
         onlyFromCrossDomainAccount(l1Bridge)
     {
-        require(
-            !IERC20BridgedUpgradeable(l2Token).isAddressFrozen(_l1Sender),
-            "L1 sender is frozen"
-        );
-        require(
-            !IERC20BridgedUpgradeable(l2Token).isAddressFrozen(_l2Receiver),
-            "L2 receiver is frozen"
-        ); // TODO: Check if this is necessary
-
         require(msg.value == 0, "Value should be 0 for ERC20 bridge");
 
         IERC20BridgedUpgradeable(l2Token).bridgeMint(_l2Receiver, _amount);
@@ -93,11 +77,6 @@ contract L2ERC20Bridge is
         address _l2Token,
         uint256 _amount
     ) external override whenWithdrawalsEnabled onlySupportedL2Token(_l2Token) {
-        require(
-            !IERC20BridgedUpgradeable(l2Token).isAddressFrozen(msg.sender),
-            "Address is frozen"
-        );
-
         IERC20BridgedUpgradeable(l2Token).bridgeBurn(msg.sender, _amount);
 
         bytes memory message = _getL1WithdrawMessage(
@@ -108,24 +87,6 @@ contract L2ERC20Bridge is
         sendCrossDomainMessage(message);
 
         emit WithdrawalInitiated(msg.sender, _l1Receiver, _l2Token, _amount);
-    }
-
-    /**
-     * @notice Allows admin to burn tokens from a frozen address and remint those tokens to an account of choice, to preserve supply.
-     * @dev The address should be previously frozen.
-     * @param account_ account whose tokens will be burned
-     * @param _l2Token address of the token on L2
-     * @param amount_ amount to be burned
-     */
-    function burnAddress(
-        address account_,
-        address _l2Token,
-        uint256 amount_
-    ) external onlySupportedL2Token(_l2Token) {
-        IERC20BridgedUpgradeable(l2Token).bridgeBurn(account_, amount_);
-        IERC20BridgedUpgradeable(l2Token).bridgeMint(msg.sender, amount_); // TODO: Switch implementation to burn to a custom escrow contract
-
-        emit BurnedFrozenTokens(account_, msg.sender, amount_);
     }
 
     /// @notice Encode the message for l2ToL1log sent with withdraw initialization
