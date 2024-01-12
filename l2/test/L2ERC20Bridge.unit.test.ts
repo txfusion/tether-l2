@@ -4,7 +4,7 @@ import { ethers } from "ethers";
 import { describe } from "mocha";
 import { setup } from "./utils/bridge.setup";
 
-describe("ZkSync :: L2ERC20Bridge", async () => {
+describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
   let context: Awaited<ReturnType<typeof setup>>;
 
   before("Setting up the context", async () => {
@@ -30,339 +30,353 @@ describe("ZkSync :: L2ERC20Bridge", async () => {
     );
   });
 
-  it("l1Bridge()", async () => {
-    const { l2Erc20Bridge, stubs } = context;
-    assert.equal(await l2Erc20Bridge.l1Bridge(), stubs.l1Bridge);
+  describe("=== Getters ===", async () => {
+    it("l1Bridge()", async () => {
+      const { l2Erc20Bridge, stubs } = context;
+      assert.equal(await l2Erc20Bridge.l1Bridge(), stubs.l1Bridge);
+    });
+
+    it("l1Token()", async () => {
+      const { l2Erc20Bridge, stubs } = context;
+      assert.equal(await l2Erc20Bridge.l1Token(), stubs.l1Token.address);
+    });
+
+    it("l2Token()", async () => {
+      const { l2Erc20Bridge, stubs } = context;
+      assert.equal(await l2Erc20Bridge.l2Token(), stubs.l2Token.address);
+    });
+
+    describe("*** l1TokenAddress ***", async () => {
+      it("l1TokenAddress() :: correct L1 token", async () => {
+        const { l2Erc20Bridge, stubs } = context;
+        const fetchedL1TokenAddress = await l2Erc20Bridge.l1TokenAddress(
+          stubs.l2Token.address
+        );
+        assert.equal(fetchedL1TokenAddress, stubs.l1Token.address);
+      });
+
+      it("l1TokenAddress() :: incorrect L1 Token", async () => {
+        const { l2Erc20Bridge, accounts } = context;
+        const wrongTokenAddress = accounts.stranger.address;
+
+        const fetchedL1TokenAddress = await l2Erc20Bridge.l1TokenAddress(
+          wrongTokenAddress
+        );
+        assert.equal(fetchedL1TokenAddress, ethers.constants.AddressZero);
+      });
+    });
+
+    describe("*** l2TokenAddress ***", async () => {
+      it("correct L2 Token", async () => {
+        const { l2Erc20Bridge, stubs } = context;
+
+        const fetchedL2TokenAddress = await l2Erc20Bridge.l2TokenAddress(
+          stubs.l1Token.address
+        );
+        assert.equal(fetchedL2TokenAddress, stubs.l2Token.address);
+      });
+
+      it("incorrect L2 Token", async () => {
+        const { l2Erc20Bridge, accounts } = context;
+        const wrongTokenAddress = accounts.stranger.address;
+
+        const fetchedL2TokenAddress = await l2Erc20Bridge.l2TokenAddress(
+          wrongTokenAddress
+        );
+        assert.equal(fetchedL2TokenAddress, ethers.constants.AddressZero);
+      });
+    });
   });
 
-  it("l1Token()", async () => {
-    const { l2Erc20Bridge, stubs } = context;
-    assert.equal(await l2Erc20Bridge.l1Token(), stubs.l1Token.address);
-  });
+  describe("=== Deposit ===", async () => {
+    it("deposits are enabled", async () => {
+      const { l2Erc20Bridge } = context;
 
-  it("l2Token()", async () => {
-    const { l2Erc20Bridge, stubs } = context;
-    assert.equal(await l2Erc20Bridge.l2Token(), stubs.l2Token.address);
-  });
+      assert.isTrue(await l2Erc20Bridge.isDepositsEnabled());
+    });
 
-  it("l1TokenAddress() :: correct L1 token", async () => {
-    const { l2Erc20Bridge, stubs } = context;
-    const fetchedL1TokenAddress = await l2Erc20Bridge.l1TokenAddress(
-      stubs.l2Token.address
-    );
-    assert.equal(fetchedL1TokenAddress, stubs.l1Token.address);
-  });
+    it("wrong l1Token address", async () => {
+      const { l2Erc20Bridge, accounts, l1Erc20Bridge, gasLimit } = context;
+      const { deployerWallet, sender, recipient } = accounts;
 
-  it("l1TokenAddress() :: incorrect L1 Token", async () => {
-    const { l2Erc20Bridge, accounts } = context;
-    const wrongTokenAddress = accounts.stranger.address;
-
-    const fetchedL1TokenAddress = await l2Erc20Bridge.l1TokenAddress(
-      wrongTokenAddress
-    );
-    assert.equal(fetchedL1TokenAddress, ethers.constants.AddressZero);
-  });
-
-  it("l2TokenAddress() :: correct L2 Token", async () => {
-    const { l2Erc20Bridge, stubs } = context;
-
-    const fetchedL2TokenAddress = await l2Erc20Bridge.l2TokenAddress(
-      stubs.l1Token.address
-    );
-    assert.equal(fetchedL2TokenAddress, stubs.l2Token.address);
-  });
-
-  it("l2TokenAddress() :: incorrect L2 Token", async () => {
-    const { l2Erc20Bridge, accounts } = context;
-    const wrongTokenAddress = accounts.stranger.address;
-
-    const fetchedL2TokenAddress = await l2Erc20Bridge.l2TokenAddress(
-      wrongTokenAddress
-    );
-    assert.equal(fetchedL2TokenAddress, ethers.constants.AddressZero);
-  });
-
-  it("deposit() :: deposits are enabled", async () => {
-    const { l2Erc20Bridge } = context;
-
-    assert.isTrue(await l2Erc20Bridge.isDepositsEnabled());
-  });
-
-  it("deposit() :: wrong l1Token address", async () => {
-    const { l2Erc20Bridge, accounts, l1Erc20Bridge, gasLimit } = context;
-    const { deployerWallet, sender, recipient } = accounts;
-
-    await enableDepositsWithAssertions(
-      l2Erc20Bridge,
-      deployerWallet.address,
-      deployerWallet.address
-    );
-    const amount = ethers.utils.parseUnits("1", "ether");
-    const l2TxGasLimit = ethers.utils.parseUnits("1000", "gwei");
-    const l2TxGasPerPubdataByte = ethers.utils.parseUnits("800", "wei");
-
-    const wrongL1TokenAddress = accounts.stranger.address;
-
-    expect(
-      await l1Erc20Bridge.deposit(
-        recipient.address,
-        wrongL1TokenAddress,
-        amount,
-        l2TxGasLimit,
-        l2TxGasPerPubdataByte,
-        sender.address,
-        l2Erc20Bridge.address,
-        "0x",
-        { gasLimit }
-      )
-    ).to.be.revertedWith("ErrorUnsupportedL1Token");
-  });
-
-  it("deposit() :: wrong domain sender", async () => {
-    const { l2Erc20Bridge, accounts, stubs, l1Erc20BridgeWrong, gasLimit } =
-      context;
-    const { deployerWallet, sender, recipient } = accounts;
-
-    await enableDepositsWithAssertions(
-      l2Erc20Bridge,
-      deployerWallet.address,
-      deployerWallet.address
-    );
-    const amount = ethers.utils.parseUnits("1", "ether");
-    const l2TxGasLimit = ethers.utils.parseUnits("1000", "gwei");
-    const l2TxGasPerPubdataByte = ethers.utils.parseUnits("800", "wei");
-
-    expect(
-      await l1Erc20BridgeWrong.deposit(
-        recipient.address,
-        stubs.l1Token.address,
-        amount,
-        l2TxGasLimit,
-        l2TxGasPerPubdataByte,
-        sender.address,
-        l2Erc20Bridge.address,
-        "0x",
-        { gasLimit }
-      )
-    ).to.be.revertedWith("ErrorWrongCrossDomainSender");
-  });
-
-  it("deposit() :: wrong (zero) value", async () => {
-    const { l2Erc20Bridge, accounts, stubs, l1Erc20Bridge, gasLimit } = context;
-    const { deployerWallet, sender, recipient } = accounts;
-
-    await enableDepositsWithAssertions(
-      l2Erc20Bridge,
-      deployerWallet.address,
-      deployerWallet.address
-    );
-    const amount = ethers.utils.parseUnits("1", "ether");
-    const l2TxGasLimit = ethers.utils.parseUnits("1000", "gwei");
-    const l2TxGasPerPubdataByte = ethers.utils.parseUnits("800", "wei");
-    const ethValue = ethers.utils.parseUnits("1", "ether");
-
-    await expect(
-      l1Erc20Bridge.deposit(
-        recipient.address,
-        stubs.l1Token.address,
-        amount,
-        l2TxGasLimit,
-        l2TxGasPerPubdataByte,
-        sender.address,
-        l2Erc20Bridge.address,
-        "0x",
-        { gasLimit, value: ethValue }
-      )
-    ).to.be.reverted;
-  });
-
-  it("deposit() :: works as expected", async () => {
-    const { l2Erc20Bridge, accounts, stubs, l1Erc20Bridge, gasLimit } = context;
-    const { deployerWallet, sender, recipient } = accounts;
-
-    await enableDepositsWithAssertions(
-      l2Erc20Bridge,
-      deployerWallet.address,
-      deployerWallet.address
-    );
-
-    const amount = ethers.utils.parseUnits("1", "ether");
-    const l2TxGasLimit = ethers.utils.parseUnits("1000", "gwei");
-    const l2TxGasPerPubdataByte = ethers.utils.parseUnits("800", "wei");
-    // changes in token supply between two transactions
-    let deltaL2TokenSupply;
-    const l2TotalSupplyBefore = await stubs.l2Token.totalSupply();
-
-    await expect(
-      l1Erc20Bridge.deposit(
-        recipient.address,
-        stubs.l1Token.address,
-        amount,
-        l2TxGasLimit,
-        l2TxGasPerPubdataByte,
-        sender.address,
-        l2Erc20Bridge.address,
-        "0x",
-        { gasLimit }
-      )
-    )
-      .to.emit(l2Erc20Bridge, "FinalizeDeposit")
-      .withArgs(
+      await enableDepositsWithAssertions(
+        l2Erc20Bridge,
         deployerWallet.address,
-        recipient.address,
-        stubs.l2Token.address,
-        amount
+        deployerWallet.address
+      );
+      const amount = ethers.utils.parseUnits("1", "ether");
+      const l2TxGasLimit = ethers.utils.parseUnits("1000", "gwei");
+      const l2TxGasPerPubdataByte = ethers.utils.parseUnits("800", "wei");
+
+      const wrongL1TokenAddress = accounts.stranger.address;
+
+      expect(
+        await l1Erc20Bridge.deposit(
+          recipient.address,
+          wrongL1TokenAddress,
+          amount,
+          l2TxGasLimit,
+          l2TxGasPerPubdataByte,
+          sender.address,
+          l2Erc20Bridge.address,
+          "0x",
+          { gasLimit }
+        )
+      ).to.be.revertedWith("ErrorUnsupportedL1Token");
+    });
+
+    it("wrong domain sender", async () => {
+      const { l2Erc20Bridge, accounts, stubs, l1Erc20BridgeWrong, gasLimit } =
+        context;
+      const { deployerWallet, sender, recipient } = accounts;
+
+      await enableDepositsWithAssertions(
+        l2Erc20Bridge,
+        deployerWallet.address,
+        deployerWallet.address
+      );
+      const amount = ethers.utils.parseUnits("1", "ether");
+      const l2TxGasLimit = ethers.utils.parseUnits("1000", "gwei");
+      const l2TxGasPerPubdataByte = ethers.utils.parseUnits("800", "wei");
+
+      expect(
+        await l1Erc20BridgeWrong.deposit(
+          recipient.address,
+          stubs.l1Token.address,
+          amount,
+          l2TxGasLimit,
+          l2TxGasPerPubdataByte,
+          sender.address,
+          l2Erc20Bridge.address,
+          "0x",
+          { gasLimit }
+        )
+      ).to.be.revertedWith("ErrorWrongCrossDomainSender");
+    });
+
+    it("wrong (zero) value", async () => {
+      const { l2Erc20Bridge, accounts, stubs, l1Erc20Bridge, gasLimit } =
+        context;
+      const { deployerWallet, sender, recipient } = accounts;
+
+      await enableDepositsWithAssertions(
+        l2Erc20Bridge,
+        deployerWallet.address,
+        deployerWallet.address
+      );
+      const amount = ethers.utils.parseUnits("1", "ether");
+      const l2TxGasLimit = ethers.utils.parseUnits("1000", "gwei");
+      const l2TxGasPerPubdataByte = ethers.utils.parseUnits("800", "wei");
+      const ethValue = ethers.utils.parseUnits("1", "ether");
+
+      await expect(
+        l1Erc20Bridge.deposit(
+          recipient.address,
+          stubs.l1Token.address,
+          amount,
+          l2TxGasLimit,
+          l2TxGasPerPubdataByte,
+          sender.address,
+          l2Erc20Bridge.address,
+          "0x",
+          { gasLimit, value: ethValue }
+        )
+      ).to.be.reverted;
+    });
+
+    it("works as expected", async () => {
+      const { l2Erc20Bridge, accounts, stubs, l1Erc20Bridge, gasLimit } =
+        context;
+      const { deployerWallet, sender, recipient } = accounts;
+
+      await enableDepositsWithAssertions(
+        l2Erc20Bridge,
+        deployerWallet.address,
+        deployerWallet.address
       );
 
-    const l2TotalSupplyAfterFirstTx = await stubs.l2Token.totalSupply();
+      const amount = ethers.utils.parseUnits("1", "ether");
+      const l2TxGasLimit = ethers.utils.parseUnits("1000", "gwei");
+      const l2TxGasPerPubdataByte = ethers.utils.parseUnits("800", "wei");
+      // changes in token supply between two transactions
+      let deltaL2TokenSupply;
+      const l2TotalSupplyBefore = await stubs.l2Token.totalSupply();
 
-    deltaL2TokenSupply = l2TotalSupplyAfterFirstTx.sub(l2TotalSupplyBefore);
-
-    expect(deltaL2TokenSupply).to.eq(
-      amount,
-      "Total supply of l2Token should increase"
-    );
-
-    await expect(
-      l1Erc20Bridge.deposit(
-        recipient.address,
-        stubs.l1Token.address,
-        amount,
-        l2TxGasLimit,
-        l2TxGasPerPubdataByte,
-        sender.address,
-        l2Erc20Bridge.address,
-        "0x",
-        { gasLimit }
+      await expect(
+        l1Erc20Bridge.deposit(
+          recipient.address,
+          stubs.l1Token.address,
+          amount,
+          l2TxGasLimit,
+          l2TxGasPerPubdataByte,
+          sender.address,
+          l2Erc20Bridge.address,
+          "0x",
+          { gasLimit }
+        )
       )
-    )
-      .to.emit(l2Erc20Bridge, "FinalizeDeposit")
-      .withArgs(
-        deployerWallet.address,
-        recipient.address,
-        stubs.l2Token.address,
-        amount
+        .to.emit(l2Erc20Bridge, "FinalizeDeposit")
+        .withArgs(
+          deployerWallet.address,
+          recipient.address,
+          stubs.l2Token.address,
+          amount
+        );
+
+      const l2TotalSupplyAfterFirstTx = await stubs.l2Token.totalSupply();
+
+      deltaL2TokenSupply = l2TotalSupplyAfterFirstTx.sub(l2TotalSupplyBefore);
+
+      expect(deltaL2TokenSupply).to.eq(
+        amount,
+        "Total supply of l2Token should increase"
       );
 
-    const l2TotalSupplyAfterSecondTx = await stubs.l2Token.totalSupply();
-
-    deltaL2TokenSupply = l2TotalSupplyAfterSecondTx.sub(
-      l2TotalSupplyAfterFirstTx
-    );
-
-    expect(deltaL2TokenSupply).to.eq(
-      amount,
-      "Total supply of l2Token should increase"
-    );
-  });
-
-  it("withdraw() :: withdrawals are disabled", async () => {
-    const { l2Erc20Bridge } = context;
-
-    assert.isTrue(await l2Erc20Bridge.isWithdrawalsEnabled());
-  });
-
-  it("withdraw() :: wrong L2 token", async () => {
-    const { l2Erc20Bridge, accounts, stubs, gasLimit } = context;
-
-    const { deployerWallet, recipient } = accounts;
-
-    await enableWithdrawalsWithAssertions(
-      l2Erc20Bridge,
-      deployerWallet.address,
-      deployerWallet.address
-    );
-    const amount = ethers.utils.parseUnits("1", "ether");
-    const wrongTokenAddress = stubs.l1Token.address;
-
-    await expect(
-      l2Erc20Bridge.withdraw(recipient.address, wrongTokenAddress, amount, {
-        gasLimit,
-      })
-    ).to.be.reverted;
-  });
-
-  it("withdraw() :: works as expected", async () => {
-    const { l2Erc20Bridge, accounts, stubs, gasLimit } = context;
-    const { deployerWallet } = accounts;
-
-    await enableWithdrawalsWithAssertions(
-      l2Erc20Bridge,
-      deployerWallet.address,
-      deployerWallet.address
-    );
-
-    const l2TotalSupplyBeforeWith = await stubs.l2Token.totalSupply();
-
-    const deployerBalanceBeforeWith = await stubs.l2Token.balanceOf(
-      deployerWallet.address
-    );
-
-    const amount = ethers.utils.parseUnits("0.5", "ether");
-
-    // changes in token supply between two transactions
-    let deltaL2TokenSupply;
-
-    await expect(
-      l2Erc20Bridge.withdraw(
-        deployerWallet.address,
-        stubs.l2Token.address,
-        amount,
-        { gasLimit }
+      await expect(
+        l1Erc20Bridge.deposit(
+          recipient.address,
+          stubs.l1Token.address,
+          amount,
+          l2TxGasLimit,
+          l2TxGasPerPubdataByte,
+          sender.address,
+          l2Erc20Bridge.address,
+          "0x",
+          { gasLimit }
+        )
       )
-    )
-      .to.emit(l2Erc20Bridge, "WithdrawalInitiated")
-      .withArgs(
-        deployerWallet.address,
-        deployerWallet.address,
-        stubs.l2Token.address,
-        amount
+        .to.emit(l2Erc20Bridge, "FinalizeDeposit")
+        .withArgs(
+          deployerWallet.address,
+          recipient.address,
+          stubs.l2Token.address,
+          amount
+        );
+
+      const l2TotalSupplyAfterSecondTx = await stubs.l2Token.totalSupply();
+
+      deltaL2TokenSupply = l2TotalSupplyAfterSecondTx.sub(
+        l2TotalSupplyAfterFirstTx
       );
 
-    const deployerBalanceAfterWith = await stubs.l2Token.balanceOf(
-      deployerWallet.address
-    );
-
-    expect(deployerBalanceBeforeWith.sub(deployerBalanceAfterWith)).to.eq(
-      amount,
-      "Change of the recipient balance of L2 token after withdrawal must match withdraw amount"
-    );
-
-    const l2TotalSupplyAfterFirstTx = await stubs.l2Token.totalSupply();
-
-    deltaL2TokenSupply = l2TotalSupplyBeforeWith.sub(l2TotalSupplyAfterFirstTx);
-
-    expect(deltaL2TokenSupply).to.eq(
-      amount,
-      "Total supply of l2Token should decrease"
-    );
-
-    await expect(
-      l2Erc20Bridge.withdraw(
-        deployerWallet.address,
-        stubs.l2Token.address,
+      expect(deltaL2TokenSupply).to.eq(
         amount,
-        { gasLimit }
-      )
-    )
-      .to.emit(l2Erc20Bridge, "WithdrawalInitiated")
-      .withArgs(
+        "Total supply of l2Token should increase"
+      );
+    });
+  });
+
+  describe("=== Withdraw ===", async () => {
+    it("withdrawals are disabled", async () => {
+      const { l2Erc20Bridge } = context;
+
+      assert.isTrue(await l2Erc20Bridge.isWithdrawalsEnabled());
+    });
+
+    it("wrong L2 token", async () => {
+      const { l2Erc20Bridge, accounts, stubs, gasLimit } = context;
+
+      const { deployerWallet, recipient } = accounts;
+
+      await enableWithdrawalsWithAssertions(
+        l2Erc20Bridge,
         deployerWallet.address,
+        deployerWallet.address
+      );
+      const amount = ethers.utils.parseUnits("1", "ether");
+      const wrongTokenAddress = stubs.l1Token.address;
+
+      await expect(
+        l2Erc20Bridge.withdraw(recipient.address, wrongTokenAddress, amount, {
+          gasLimit,
+        })
+      ).to.be.reverted;
+    });
+
+    it("works as expected", async () => {
+      const { l2Erc20Bridge, accounts, stubs, gasLimit } = context;
+      const { deployerWallet } = accounts;
+
+      await enableWithdrawalsWithAssertions(
+        l2Erc20Bridge,
         deployerWallet.address,
-        stubs.l2Token.address,
-        amount
+        deployerWallet.address
       );
 
-    const l2TotalSupplyAfterSecondTx = await stubs.l2Token.totalSupply();
+      const l2TotalSupplyBeforeWith = await stubs.l2Token.totalSupply();
 
-    deltaL2TokenSupply = l2TotalSupplyAfterFirstTx.sub(
-      l2TotalSupplyAfterSecondTx
-    );
+      const deployerBalanceBeforeWith = await stubs.l2Token.balanceOf(
+        deployerWallet.address
+      );
 
-    expect(deltaL2TokenSupply).to.eq(
-      amount,
-      "Total supply of l2Token should decrease"
-    );
+      const amount = ethers.utils.parseUnits("0.5", "ether");
+
+      // changes in token supply between two transactions
+      let deltaL2TokenSupply;
+
+      await expect(
+        l2Erc20Bridge.withdraw(
+          deployerWallet.address,
+          stubs.l2Token.address,
+          amount,
+          { gasLimit }
+        )
+      )
+        .to.emit(l2Erc20Bridge, "WithdrawalInitiated")
+        .withArgs(
+          deployerWallet.address,
+          deployerWallet.address,
+          stubs.l2Token.address,
+          amount
+        );
+
+      const deployerBalanceAfterWith = await stubs.l2Token.balanceOf(
+        deployerWallet.address
+      );
+
+      expect(deployerBalanceBeforeWith.sub(deployerBalanceAfterWith)).to.eq(
+        amount,
+        "Change of the recipient balance of L2 token after withdrawal must match withdraw amount"
+      );
+
+      const l2TotalSupplyAfterFirstTx = await stubs.l2Token.totalSupply();
+
+      deltaL2TokenSupply = l2TotalSupplyBeforeWith.sub(
+        l2TotalSupplyAfterFirstTx
+      );
+
+      expect(deltaL2TokenSupply).to.eq(
+        amount,
+        "Total supply of l2Token should decrease"
+      );
+
+      await expect(
+        l2Erc20Bridge.withdraw(
+          deployerWallet.address,
+          stubs.l2Token.address,
+          amount,
+          { gasLimit }
+        )
+      )
+        .to.emit(l2Erc20Bridge, "WithdrawalInitiated")
+        .withArgs(
+          deployerWallet.address,
+          deployerWallet.address,
+          stubs.l2Token.address,
+          amount
+        );
+
+      const l2TotalSupplyAfterSecondTx = await stubs.l2Token.totalSupply();
+
+      deltaL2TokenSupply = l2TotalSupplyAfterFirstTx.sub(
+        l2TotalSupplyAfterSecondTx
+      );
+
+      expect(deltaL2TokenSupply).to.eq(
+        amount,
+        "Total supply of l2Token should decrease"
+      );
+    });
   });
 });
 
