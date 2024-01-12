@@ -1,7 +1,7 @@
 import hre from "hardhat";
 import { Wallet, Provider, Contract } from "zksync-web3";
 import { Deployer } from "@matterlabs/hardhat-zksync-deploy";
-import { ethers } from "ethers";
+import { BigNumber, ethers } from "ethers";
 
 import { richWallet } from "../../../l1/scripts/utils/rich_wallet";
 import {
@@ -83,6 +83,9 @@ export async function setup() {
     )
   ).wait();
 
+  const ADDRESS_FREEZER_ROLE = await erc20Bridged.ADDRESS_FREEZER_ROLE();
+  const ADDRESS_BURNER_ROLE = await erc20Bridged.ADDRESS_BURNER_ROLE();
+
   return {
     accounts: {
       deployerWallet,
@@ -100,5 +103,13 @@ export async function setup() {
       verifyingContract: erc20Bridged.address,
     },
     gasLimit: 10_000_000,
+    roles: {
+      ADDRESS_FREEZER_ROLE: ethers.utils.hexlify(
+        BigNumber.from(ADDRESS_FREEZER_ROLE)
+      ),
+      ADDRESS_BURNER_ROLE: ethers.utils.hexlify(
+        BigNumber.from(ADDRESS_BURNER_ROLE)
+      ),
+    },
   };
 }

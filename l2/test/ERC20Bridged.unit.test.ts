@@ -1,14 +1,14 @@
 import { assert, expect } from "chai";
-import { ethers, BigNumber } from "ethers";
+import { BigNumber, ethers } from "ethers";
 import { describe } from "mocha";
-
-import { domainSeparator } from "./utils/eip712";
+import { Wallet } from "zksync-web3";
+import { setup } from "./utils/erc20.setup";
 import {
   CHAIN_ID,
   L2_TOKEN_NAME,
   L2_TOKEN_SINGING_DOMAIN_VERSION,
 } from "./utils/constants";
-import { setup } from "./utils/erc20.setup";
+import { domainSeparator } from "./utils/eip712";
 
 const types: Record<string, ethers.TypedDataField[]> = {
   Permit: [
@@ -25,6 +25,181 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
 
   before("Setting up the context", async () => {
     context = await setup();
+  });
+
+  describe("=== Freeze ===", async () => {
+    const AMOUNT = 1;
+
+    it("non-admins cannot freeze", async () => {
+      const {
+        accounts: { initialHolder, governor },
+        erc20Bridged,
+        roles: { ADDRESS_FREEZER_ROLE },
+      } = context;
+
+      await expect(
+        erc20Bridged.connect(initialHolder).freezeAddress(governor.address)
+      ).to.be.revertedWith(
+        `AccessControl: account ${initialHolder.address.toLowerCase()} is missing role ${ADDRESS_FREEZER_ROLE}`
+      );
+    });
+
+    it("admins can freeze", async () => {
+      const {
+        accounts: { initialHolder, governor },
+        erc20Bridged,
+      } = context;
+
+      await freezeAddress(erc20Bridged, governor, initialHolder);
+    });
+
+    describe("*** Transfer ***", async () => {
+      it("frozen address cannot use transfer()", async () => {
+        const {
+          accounts: { initialHolder, governor },
+          erc20Bridged,
+        } = context;
+
+        await freezeAddress(erc20Bridged, governor, initialHolder);
+
+        await expect(
+          erc20Bridged.connect(initialHolder).transfer(governor.address, AMOUNT)
+        ).to.be.revertedWithCustomError(erc20Bridged, "OnlyNotFrozenAddress");
+      });
+
+      it("unfrozen address cannot use transfer() to frozen address", async () => {
+        const {
+          accounts: { initialHolder, spender, governor },
+          erc20Bridged,
+        } = context;
+
+        await unfreezeAddress(erc20Bridged, governor, initialHolder);
+        await freezeAddress(erc20Bridged, governor, spender);
+
+        await expect(
+          erc20Bridged.connect(initialHolder).transfer(spender.address, AMOUNT)
+        ).to.be.revertedWithCustomError(erc20Bridged, "OnlyNotFrozenAddress");
+      });
+
+      it("unfrozen address can use transfer() to unfrozen address", async () => {
+        const {
+          accounts: { initialHolder, governor },
+          erc20Bridged,
+        } = context;
+
+        await unfreezeAddress(erc20Bridged, governor, initialHolder);
+
+        const transferTx = await erc20Bridged
+          .connect(initialHolder)
+          .transfer(governor.address, AMOUNT);
+        await transferTx.wait();
+
+        expect(await erc20Bridged.balanceOf(governor.address)).to.be.equal(
+          AMOUNT
+        );
+      });
+    });
+
+    describe("*** Transfer From ***", async () => {
+      it("frozen address cannot use transferFrom()", async () => {
+        const {
+          accounts: { initialHolder, governor },
+          erc20Bridged,
+        } = context;
+
+        await freezeAddress(erc20Bridged, governor, initialHolder);
+
+        await expect(
+          erc20Bridged
+            .connect(initialHolder)
+            .transferFrom(initialHolder.address, governor.address, AMOUNT)
+        ).to.be.revertedWithCustomError(erc20Bridged, "OnlyNotFrozenAddress");
+      });
+
+      it("unfrozen address cannot use transferFrom() to frozen address", async () => {
+        const {
+          accounts: { initialHolder, spender, governor },
+          erc20Bridged,
+        } = context;
+
+        await unfreezeAddress(erc20Bridged, governor, initialHolder);
+        await freezeAddress(erc20Bridged, governor, spender);
+
+        const allowTx = await erc20Bridged
+          .connect(initialHolder)
+          .increaseAllowance(governor.address, AMOUNT);
+        await allowTx.wait();
+
+        await expect(
+          erc20Bridged
+            .connect(governor)
+            .transferFrom(initialHolder.address, spender.address, AMOUNT)
+        ).to.be.revertedWithCustomError(erc20Bridged, "OnlyNotFrozenAddress");
+      });
+
+      it("unfrozen address can use transferFrom() to unfrozen address", async () => {
+        const {
+          accounts: { initialHolder, governor },
+          erc20Bridged,
+        } = context;
+
+        await unfreezeAddress(erc20Bridged, governor, initialHolder);
+
+        const allowTx = await erc20Bridged
+          .connect(initialHolder)
+          .increaseAllowance(governor.address, AMOUNT);
+        await allowTx.wait();
+
+        const transferTx = await erc20Bridged
+          .connect(governor)
+          .transferFrom(initialHolder.address, governor.address, AMOUNT);
+        await transferTx.wait();
+
+        expect(await erc20Bridged.balanceOf(governor.address)).to.be.equal(
+          AMOUNT * 2
+        ); // AMOUNT * 2 because of the previous "transfer" test
+      });
+    });
+  });
+
+  describe("=== Burn ===", async () => {
+    it("non-admins cannot burn", async () => {
+      const {
+        accounts: { initialHolder, governor },
+        erc20Bridged,
+        roles: { ADDRESS_BURNER_ROLE },
+      } = context;
+
+      await expect(
+        erc20Bridged.connect(initialHolder).burnFrozenTokens(governor.address)
+      ).to.be.revertedWith(
+        `AccessControl: account ${initialHolder.address.toLowerCase()} is missing role ${ADDRESS_BURNER_ROLE}`
+      );
+    });
+
+    it("admins cannot burn unfrozen accounts", async () => {
+      const {
+        accounts: { initialHolder, governor },
+        erc20Bridged,
+      } = context;
+
+      await freezeAddress(erc20Bridged, governor, initialHolder);
+
+      expect(
+        await erc20Bridged
+          .connect(governor)
+          .burnFrozenTokens(initialHolder.address)
+      ).to.be.revertedWithCustomError(erc20Bridged, "OnlyFrozenAddress");
+    });
+
+    it("admins can burn frozen accounts", async () => {
+      const {
+        accounts: { initialHolder, governor },
+        erc20Bridged,
+      } = context;
+
+      await freezeAndBurn(erc20Bridged, governor, initialHolder);
+    });
   });
 
   describe("=== Getters ===", async () => {
@@ -435,3 +610,75 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
     });
   });
 });
+
+const freezeAddress = async (
+  erc20: ethers.Contract,
+  freezer: Wallet,
+  toFreeze: Wallet
+) => {
+  const freezeTx = await erc20.connect(freezer).freezeAddress(toFreeze.address);
+  await freezeTx.wait();
+
+  assert.deepEqual(
+    await erc20.isAddressFrozen(toFreeze.address),
+    true,
+    "Address was not frozen"
+  );
+};
+
+const unfreezeAddress = async (
+  erc20: ethers.Contract,
+  freezer: Wallet,
+  toFreeze: Wallet
+) => {
+  const freezeTx = await erc20
+    .connect(freezer)
+    .unfreezeAddress(toFreeze.address);
+  await freezeTx.wait();
+
+  assert.deepEqual(
+    await erc20.isAddressFrozen(toFreeze.address),
+    false,
+    "Address was not unfrozen"
+  );
+};
+
+const freezeAndBurn = async (
+  erc20: ethers.Contract,
+  admin: Wallet,
+  toFreezeAndBurn: Wallet
+) => {
+  const freezeTx = await erc20
+    .connect(admin)
+    .freezeAddress(toFreezeAndBurn.address);
+  await freezeTx.wait();
+
+  assert.deepEqual(
+    await erc20.isAddressFrozen(toFreezeAndBurn.address),
+    true,
+    "Address was not frozen"
+  );
+
+  // TODO: Once escrow contract is in place, check its balance instead
+  const adminBalanceBeforeBurn = await erc20.balanceOf(admin.address);
+  const userBalanceBeforeBurn = await erc20.balanceOf(toFreezeAndBurn.address);
+
+  const burnTx = await erc20
+    .connect(admin)
+    .burnFrozenTokens(toFreezeAndBurn.address);
+  await burnTx.wait();
+
+  // User balance should be 0
+  assert.deepEqual(
+    await erc20.balanceOf(toFreezeAndBurn.address),
+    BigNumber.from(0),
+    "Tokens were not burned"
+  );
+
+  // Admin (later escrow) balance should increase by the burned token amount
+  assert.deepEqual(
+    await erc20.balanceOf(admin.address),
+    adminBalanceBeforeBurn.add(userBalanceBeforeBurn),
+    "Tokens were not burned"
+  );
+};
