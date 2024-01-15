@@ -192,13 +192,43 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
       ).to.be.revertedWithCustomError(erc20Bridged, "OnlyFrozenAddress");
     });
 
+    it("admins cannot burn unfrozen accounts and re-mint to 0x0", async () => {
+      const {
+        accounts: { initialHolder, governor },
+        erc20Bridged,
+      } = context;
+
+      await freezeAddress(erc20Bridged, governor, initialHolder);
+
+      await expect(
+        erc20Bridged
+          .connect(governor)
+          .burnFrozenTokensEscrow(
+            initialHolder.address,
+            ethers.constants.AddressZero
+          )
+      ).to.be.revertedWithCustomError(
+        erc20Bridged,
+        "ErrorAccountIsZeroAddress"
+      );
+    });
+
     it("admins can burn frozen accounts", async () => {
       const {
         accounts: { initialHolder, governor },
         erc20Bridged,
       } = context;
 
-      await freezeAndBurn(erc20Bridged, governor, initialHolder);
+      await freezeAndBurn(erc20Bridged, governor, governor, initialHolder);
+    });
+
+    it("admins can burn frozen accounts and re-mint to escrow", async () => {
+      const {
+        accounts: { initialHolder, governor, spender },
+        erc20Bridged,
+      } = context;
+
+      await freezeAndBurn(erc20Bridged, governor, spender, initialHolder);
     });
   });
 
@@ -646,6 +676,7 @@ const unfreezeAddress = async (
 const freezeAndBurn = async (
   erc20: ethers.Contract,
   admin: Wallet,
+  escrow: Wallet,
   toFreezeAndBurn: Wallet
 ) => {
   const freezeTx = await erc20
@@ -659,13 +690,12 @@ const freezeAndBurn = async (
     "Address was not frozen"
   );
 
-  // TODO: Once escrow contract is in place, check its balance instead
-  const adminBalanceBeforeBurn = await erc20.balanceOf(admin.address);
+  const escrowBalanceBeforeBurn = await erc20.balanceOf(escrow.address);
   const userBalanceBeforeBurn = await erc20.balanceOf(toFreezeAndBurn.address);
 
   const burnTx = await erc20
     .connect(admin)
-    .burnFrozenTokens(toFreezeAndBurn.address);
+    .burnFrozenTokensEscrow(toFreezeAndBurn.address, escrow.address);
   await burnTx.wait();
 
   // User balance should be 0
@@ -675,10 +705,10 @@ const freezeAndBurn = async (
     "Tokens were not burned"
   );
 
-  // Admin (later escrow) balance should increase by the burned token amount
+  // Escrow balance should increase by the burned token amount
   assert.deepEqual(
-    await erc20.balanceOf(admin.address),
-    adminBalanceBeforeBurn.add(userBalanceBeforeBurn),
+    await erc20.balanceOf(escrow.address),
+    escrowBalanceBeforeBurn.add(userBalanceBeforeBurn),
     "Tokens were not burned"
   );
 };

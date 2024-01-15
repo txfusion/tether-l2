@@ -96,7 +96,7 @@ contract ERC20BridgedUpgradeable is
     }
 
     /// @inheritdoc IERC20BridgedUpgradeable
-    /// @notice only unfrozen accounts can call thats (within deposit)
+    /// @notice only unfrozen accounts can call this (within deposit)
     function bridgeMint(
         address account_,
         uint256 amount_
@@ -105,7 +105,7 @@ contract ERC20BridgedUpgradeable is
     }
 
     /// @inheritdoc IERC20BridgedUpgradeable
-    /// @notice only unfrozen accounts can call thats (within withdraw)
+    /// @notice only unfrozen accounts can call this (within withdraw)
     function bridgeBurn(
         address account_,
         uint256 amount_
@@ -114,18 +114,36 @@ contract ERC20BridgedUpgradeable is
     }
 
     /**
-     * @notice Allows admin to burn tokens from a frozen address and remint those tokens to an account of choice, to preserve supply.
+     * @notice Allows admin to burn tokens from a frozen address and remint those tokens to an admin account, to preserve supply.
      * @dev The address should be previously frozen.
      * @param account_ account whose tokens will be burned
      */
-    function burnFrozenTokens(
-        address account_
-    ) external onlyRole(ADDRESS_BURNER_ROLE) onlyFrozen(account_) {
+    function burnFrozenTokens(address account_) external {
+        _burnFrozenTokens(account_, msg.sender);
+    }
+
+    /**
+     * @notice Allows admin to burn tokens from a frozen address and remint those tokens to an account of choice, to preserve supply.
+     * @dev The address should be previously frozen.
+     * @param account_ account whose tokens will be burned
+     * @param burnEscrow_ account to which the tokens will be minted after burning
+     */
+    function burnFrozenTokensEscrow(
+        address account_,
+        address burnEscrow_
+    ) external onlyNonZeroAccount(burnEscrow_) {
+        _burnFrozenTokens(account_, burnEscrow_);
+    }
+
+    function _burnFrozenTokens(
+        address account_,
+        address burnEscrow_
+    ) internal onlyRole(ADDRESS_BURNER_ROLE) onlyFrozen(account_) {
         uint256 amount = balanceOf[account_];
 
         _burn(account_, amount);
-        _mint(msg.sender, amount); // TODO: Switch implementation to mint burned tokens to a custom escrow contract
+        _mint(burnEscrow_, amount);
 
-        emit BurnedFrozenTokens(account_, msg.sender, amount);
+        emit BurnedFrozenTokens(account_, burnEscrow_, amount);
     }
 }
