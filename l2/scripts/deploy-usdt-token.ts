@@ -78,7 +78,7 @@ async function main() {
 
   const initImplV2Tx = await erc20BridgedImplementation[
     "__ERC20BridgedUpgradeable_init_v2(address)"
-  ](deployer.zkWallet.address);
+  ](deployer.zkWallet.address); // TODO: shouldn't this be the bridge?
   await initImplV2Tx.wait();
 
   console.log("Implementation initialized");

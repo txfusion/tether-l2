@@ -14,7 +14,7 @@
     "upgrade-l2-token": "hardhat run scripts/tests/upgrade-l2-token.ts",
     "test:unit": "hardhat test ./test/*.unit.test.ts",
     "test:e2e": "hardhat test ./test/e2e/*.e2e.test.ts",
-    "deployment-acceptance": "hardhat test ./test/deployment.acceptance.test.ts"
+    "test:deployment-acceptance": "hardhat test ./test/deployment.acceptance.test.ts"
   },
   "license": "ISC",
   "devDependencies": {
