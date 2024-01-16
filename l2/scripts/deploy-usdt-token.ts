@@ -1,13 +1,10 @@
 import * as hre from "hardhat";
 import { Deployer } from "@matterlabs/hardhat-zksync-deploy";
-import { Contract, Wallet } from "zksync-web3";
+import { Wallet } from "zksync-web3";
 
-import {
-  ERC20_BRIDGED_CONSTANTS,
-  PRIVATE_KEY,
-  ADDRESSES,
-} from "./utils/constants";
+import { ERC20_BRIDGED_CONSTANTS, PRIVATE_KEY } from "./utils/constants";
 import { verify } from "./utils/verify";
+import { ERC20BridgedUpgradeable__factory } from "../typechain";
 
 const ERC20_BRIDGED_TOKEN_CONTRACT_NAME = "ERC20BridgedUpgradeable";
 const OSSIFIABLE_PROXY_CONTRACT_NAME = "OssifiableProxy";
@@ -52,33 +49,48 @@ async function main() {
 
   await verify(l2TokenContractProxy.address);
 
-  /**
-   * Initializing Implementation
-   */
+  console.log("~~~ Initializing Proxy ~~~");
 
-  // TODO: tidy up
-
-  console.log("~~~ Initializing Implementation ~~~");
-  const erc20BridgedImplementation = new Contract(
-    l2TokenContractImpl.address,
-    erc20TokenArtifact.abi,
+  const l2TokenProxy = new ERC20BridgedUpgradeable__factory(
     deployer.zkWallet
-  );
+  ).attach(l2TokenContractProxy.address);
 
-  const initImplTx = await erc20BridgedImplementation[
-    "__ERC20BridgedUpgradeable_init(string,string,uint8,address)"
-  ](
+  const initProxyTx = await l2TokenProxy.__ERC20BridgedUpgradeable_init(
     ERC20_BRIDGED_CONSTANTS.NAME,
     ERC20_BRIDGED_CONSTANTS.SYMBOL,
     ERC20_BRIDGED_CONSTANTS.DECIMALS,
     adminAddress
   );
 
+  await initProxyTx.wait();
+
+  console.log("Proxy initialized");
+
+  /**
+   * Initializing Implementation
+   */
+
+  console.log("~~~ Initializing Implementation ~~~");
+
+  const erc20BridgedImplementation = new ERC20BridgedUpgradeable__factory(
+    deployer.zkWallet
+  ).attach(erc20Token.address);
+
+  const initImplTx =
+    await erc20BridgedImplementation.__ERC20BridgedUpgradeable_init(
+      ERC20_BRIDGED_CONSTANTS.NAME,
+      ERC20_BRIDGED_CONSTANTS.SYMBOL,
+      ERC20_BRIDGED_CONSTANTS.DECIMALS,
+      adminAddress
+    );
+
   await initImplTx.wait();
 
-  const initImplV2Tx = await erc20BridgedImplementation[
-    "__ERC20BridgedUpgradeable_init_v2(address)"
-  ](deployer.zkWallet.address); // TODO: shouldn't this be the bridge?
+  const initImplV2Tx =
+    await erc20BridgedImplementation.__ERC20BridgedUpgradeable_init_v2(
+      deployer.zkWallet.address
+    );
+
   await initImplV2Tx.wait();
 
   console.log("Implementation initialized");

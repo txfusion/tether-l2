@@ -10,7 +10,6 @@ import {
 import { ZKSYNC_ADDRESSES } from "./../e2e/e2e";
 import { IZkSyncFactory } from "zksync-web3/build/typechain";
 import { OssifiableProxy__factory } from "../../typechain";
-import { TransparentUpgradeableProxy__factory } from "../../../l2/typechain";
 
 const ETH_CLIENT_WEB3_URL = process.env.ETH_CLIENT_WEB3_URL as string;
 const ZKSYNC_PROVIDER_URL = process.env.ZKSYNC_PROVIDER_URL as string;
@@ -46,9 +45,7 @@ export async function setup() {
     },
     l2: {
       proxy: {
-        l2Token: new TransparentUpgradeableProxy__factory(deployer).attach(
-          l2Token
-        ),
+        l2Token: new OssifiableProxy__factory(deployer).attach(l2Token),
         l2Bridge: new OssifiableProxy__factory(deployer).attach(l2Bridge),
       },
       // CONTRACTS

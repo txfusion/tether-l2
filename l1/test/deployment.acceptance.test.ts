@@ -372,7 +372,7 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
         "process.env.CONTRACTS_L2_TOKEN_IMPLEMENTATION_ADDR: ",
         process.env.CONTRACTS_L2_TOKEN_IMPLEMENTATION_ADDR
       );
-
+      console.log(await l2Token.name());
       assert.equal(await l2Token.name(), ERC20_BRIDGED_CONSTANTS.NAME);
     });
 

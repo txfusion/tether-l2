@@ -4,10 +4,7 @@ import { utils } from "zksync-web3";
 
 import { setup } from "./bridge.setup";
 import { L1ERC20Bridge__factory } from "../../typechain";
-import {
-  ZkSyncBridgeExecutor__factory,
-  L2ERC20Bridge__factory,
-} from "../../../l2/typechain";
+import { L2ERC20Bridge__factory } from "../../../l2/typechain";
 
 export const ZKSYNC_ADDRESSES = {
   l1: {
@@ -16,7 +13,6 @@ export const ZKSYNC_ADDRESSES = {
   },
   l2: {
     l2Token: process.env.CONTRACTS_L2_TOKEN_PROXY_ADDR as string, // connection tests to l1 succeed, erc20 tests fails
-    // l2Token: process.env.CONTRACTS_L2_TOKEN_IMPLEMENTATION_ADDR as string, // connection tests to l1 fails, erc20 tests succeed
     l2Bridge: process.env.CONTRACTS_L2_BRIDGE_PROXY_ADDR as string,
   },
 };
