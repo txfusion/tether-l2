@@ -4,9 +4,14 @@ pragma solidity ^0.8.10;
 
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {IERC20FreezeManager} from "./../../../common/interfaces/IERC20FreezeManager.sol";
 
 /// @notice Contains administrative methods to retrieve and control the state of the bridging
-contract ERC20FreezeManager is Initializable, AccessControlUpgradeable {
+contract ERC20FreezeManager is
+    Initializable,
+    AccessControlUpgradeable,
+    IERC20FreezeManager
+{
     event AddressFrozen(address indexed freezer, address indexed frozen);
     event AddressBurned(address indexed burner, address indexed burned);
     event ManagerInitialized(address indexed admin);
@@ -68,6 +73,10 @@ contract ERC20FreezeManager is Initializable, AccessControlUpgradeable {
     }
 
     /// @notice Check to see if the provided address is frozen.
+    function isFrozen(address toCheck) external view returns (bool) {
+        return _isFrozen(toCheck);
+    }
+
     function _isFrozen(address toCheck) internal view returns (bool) {
         return s_frozenAddresses[toCheck];
     }

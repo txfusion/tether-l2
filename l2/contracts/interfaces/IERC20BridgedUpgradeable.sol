@@ -18,8 +18,4 @@ interface IERC20BridgedUpgradeable is IERC20Upgradeable {
     /// @param account_ An address of the account to burn tokens
     /// @param amount_ An amount of tokens to burn
     function bridgeBurn(address account_, uint256 amount_) external;
-
-    /// @notice Checks if the provided address has been frozen.
-    /// @param toCheck user's address
-    function isAddressFrozen(address toCheck) external view returns (bool);
 }

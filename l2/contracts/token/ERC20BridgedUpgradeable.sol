@@ -59,11 +59,6 @@ contract ERC20BridgedUpgradeable is
         _;
     }
 
-    /// @notice Check to see if the provided address is frozen.
-    function isAddressFrozen(address toCheck) public view returns (bool) {
-        return _isFrozen(toCheck);
-    }
-
     function transfer(
         address to_,
         uint256 amount_

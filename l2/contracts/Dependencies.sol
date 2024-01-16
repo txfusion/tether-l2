@@ -12,6 +12,7 @@ import "../../common/proxy/OssifiableProxy.sol";
 import "../../common/interfaces/IERC20Bridged.sol";
 import "../../common/interfaces/IL1ERC20Bridge.sol";
 import "../../common/interfaces/IL2ERC20Bridge.sol";
+import "../../common/interfaces/IERC20FreezeManager.sol";
 
 /// @notice Stubs
 import "../../common/stubs/EmptyContractStub.sol";

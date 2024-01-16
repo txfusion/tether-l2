@@ -650,7 +650,7 @@ const freezeAddress = async (
   await freezeTx.wait();
 
   assert.deepEqual(
-    await erc20.isAddressFrozen(toFreeze.address),
+    await erc20.isFrozen(toFreeze.address),
     true,
     "Address was not frozen"
   );
@@ -667,7 +667,7 @@ const unfreezeAddress = async (
   await freezeTx.wait();
 
   assert.deepEqual(
-    await erc20.isAddressFrozen(toFreeze.address),
+    await erc20.isFrozen(toFreeze.address),
     false,
     "Address was not unfrozen"
   );
@@ -685,7 +685,7 @@ const freezeAndBurn = async (
   await freezeTx.wait();
 
   assert.deepEqual(
-    await erc20.isAddressFrozen(toFreezeAndBurn.address),
+    await erc20.isFrozen(toFreezeAndBurn.address),
     true,
     "Address was not frozen"
   );
