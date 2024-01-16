@@ -47,7 +47,7 @@ contract ERC20BridgedStub is IERC20Bridged, ERC20 {
         _burn(account, amount);
     }
 
-    function isAddressFrozen(address toCheck) external view returns (bool) {
+    function isFrozen(address toCheck) external view returns (bool) {
         return frozenAddresses[toCheck];
     }
 }
