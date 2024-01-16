@@ -4,7 +4,7 @@ import { assert } from "chai";
 import { defaultAbiCoder } from "ethers/lib/utils";
 
 import { HASHES } from "../scripts/utils/hashes";
-import { setup } from "./utils/deployment.setup";
+import { setup } from "./setup/deployment.setup";
 import { ERC20_BRIDGED_CONSTANTS } from "../../l2/scripts/utils/constants";
 import { ProxyAdmin__factory } from "../../l2/typechain";
 import { ZKSYNC_ADDRESSES } from "./e2e/e2e";
@@ -63,7 +63,7 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
     });
 
     describe("*** Deposits ***", async () => {
-      it("> Are enabled", async () => {
+      it("Are enabled?", async () => {
         const {
           l1: { l1Bridge },
           depositsEnabled,
@@ -72,7 +72,7 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
         assert.equal(await l1Bridge.isDepositsEnabled(), depositsEnabled.l1);
       });
 
-      it("> Enablers", async () => {
+      it("Enablers", async () => {
         const {
           l1: { l1Bridge },
           accounts: { deployer },
@@ -87,7 +87,7 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
         }
       });
 
-      it("> Disablers", async () => {
+      it("Disablers", async () => {
         const {
           l1: { l1Bridge },
           accounts: { deployer },
@@ -107,7 +107,7 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
     });
 
     describe("*** Withdrawals ***", async () => {
-      it("> Are enabled", async () => {
+      it("Are enabled?", async () => {
         const {
           l1: { l1Bridge },
           withdrawalsEnabled,
@@ -119,7 +119,7 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
         );
       });
 
-      it("> Enablers", async () => {
+      it("Enablers", async () => {
         const {
           l1: { l1Bridge },
           accounts: { deployer },
@@ -137,7 +137,7 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
         }
       });
 
-      it("> Disablers", async () => {
+      it("Disablers", async () => {
         const {
           l1: { l1Bridge },
           accounts: { deployer },
@@ -230,7 +230,7 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
     });
 
     describe("*** Deposits ***", async () => {
-      it("> Are disabled", async () => {
+      it("Are enabled?", async () => {
         const {
           l2: { l2Bridge },
           depositsEnabled,
@@ -239,7 +239,7 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
         assert.equal(await l2Bridge.isDepositsEnabled(), depositsEnabled.l2);
       });
 
-      it("> Enablers", async () => {
+      it("Enablers", async () => {
         const {
           l2: { l2Bridge },
           accounts: { deployer },
@@ -254,7 +254,7 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
         }
       });
 
-      it("> Disablers", async () => {
+      it("Disablers", async () => {
         const {
           l2: { l2Bridge },
           accounts: { deployer },
@@ -274,7 +274,7 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
     });
 
     describe("*** Withdrawals ***", async () => {
-      it("> Are enabled", async () => {
+      it("Are enabled?", async () => {
         const {
           l2: { l2Bridge },
           withdrawalsEnabled,
@@ -286,7 +286,7 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
         );
       });
 
-      it("> Enablers", async () => {
+      it("Enablers", async () => {
         const {
           l1: { l1Bridge },
           accounts: { deployer },
@@ -304,7 +304,7 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
         }
       });
 
-      it("> Disablers", async () => {
+      it("Disablers", async () => {
         const {
           l2: { l2Bridge },
           accounts: { deployer },
@@ -363,16 +363,6 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
         l2: { l2Token },
       } = ctx;
 
-      console.log("l2Token.address: ", l2Token.address);
-      console.log(
-        "process.env.CONTRACTS_L2_TOKEN_PROXY_ADDR: ",
-        process.env.CONTRACTS_L2_TOKEN_PROXY_ADDR
-      );
-      console.log(
-        "process.env.CONTRACTS_L2_TOKEN_IMPLEMENTATION_ADDR: ",
-        process.env.CONTRACTS_L2_TOKEN_IMPLEMENTATION_ADDR
-      );
-      console.log(await l2Token.name());
       assert.equal(await l2Token.name(), ERC20_BRIDGED_CONSTANTS.NAME);
     });
 

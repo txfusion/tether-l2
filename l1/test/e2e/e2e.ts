@@ -2,9 +2,8 @@ import * as hre from "hardhat";
 import { BigNumberish, Contract } from "ethers";
 import { utils } from "zksync-web3";
 
-import { setup } from "./bridge.setup";
+import { setup } from "./../setup/bridge.setup";
 import { L1ERC20Bridge__factory } from "../../typechain";
-import { L2ERC20Bridge__factory } from "../../../l2/typechain";
 
 export const ZKSYNC_ADDRESSES = {
   l1: {
@@ -16,13 +15,6 @@ export const ZKSYNC_ADDRESSES = {
     l2Bridge: process.env.CONTRACTS_L2_BRIDGE_PROXY_ADDR as string,
   },
 };
-
-export const BRIDGE_ACTIONS = {
-  disableDeposits: "disableDeposits",
-  enableDeposits: "enableDeposits",
-  enableWithdrawals: "enableWithdrawals",
-  disableWithdrawals: "disableWithdrawals",
-} as const;
 
 /**
  * executeGovOnL1Bridge

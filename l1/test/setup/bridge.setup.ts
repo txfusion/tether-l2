@@ -6,7 +6,7 @@ import {
   ERC20BridgedUpgradeable__factory,
   L2ERC20Bridge__factory,
 } from "../../../l2/typechain";
-import { ZKSYNC_ADDRESSES } from "./e2e";
+import { ZKSYNC_ADDRESSES } from "./../utils/utils";
 import { parseEther } from "ethers/lib/utils";
 import { IZkSyncFactory } from "zksync-web3/build/typechain";
 

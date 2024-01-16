@@ -4,7 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "compile": "cd l1 && npm run compile && cd ../l2 && npm run compile",
+    "compile": "sh ./compile.sh",
+    "deploy": "sh ./deploy.sh",
+    "test": "cd l1 && npm run test && cd ../l2 && npm run test",
+    "test:e2e": "cd l1 && npm run test:e2e",
+    "test:deployment-acceptance": "cd l1 && npm run test:deployment-acceptance",
     "test:unit": "cd l1 && npm run test:unit && cd ../l2 && npm run test:unit"
   },
   "license": "ISC",

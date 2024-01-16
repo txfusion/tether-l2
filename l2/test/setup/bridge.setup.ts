@@ -4,7 +4,7 @@ import { Provider, Wallet, Contract, utils } from "zksync-web3";
 import { richWallet } from "../../../l1/scripts/utils/rich_wallet";
 import { Deployer } from "@matterlabs/hardhat-zksync-deploy";
 
-import { L2_TOKEN_NAME, L2_TOKEN_SYMBOL } from "./constants";
+import { L2_TOKEN_NAME, L2_TOKEN_SYMBOL } from "../utils/constants";
 import { ethers } from "ethers";
 
 const TESTNET_PROVIDER_URL = "http://localhost:3050";

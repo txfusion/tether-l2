@@ -2,7 +2,7 @@ import { assert, expect } from "chai";
 import { BigNumber, ethers } from "ethers";
 import { describe } from "mocha";
 import { Wallet } from "zksync-web3";
-import { setup } from "./utils/erc20.setup";
+import { setup } from "./setup/erc20.setup";
 import {
   CHAIN_ID,
   L2_TOKEN_NAME,
@@ -30,7 +30,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
   describe("=== Freeze ===", async () => {
     const AMOUNT = 1;
 
-    it("non-admins cannot freeze", async () => {
+    it("Non-admins cannot freeze", async () => {
       const {
         accounts: { initialHolder, governor },
         erc20Bridged,
@@ -44,7 +44,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
       );
     });
 
-    it("admins can freeze", async () => {
+    it("Admins can freeze", async () => {
       const {
         accounts: { initialHolder, governor },
         erc20Bridged,
@@ -54,7 +54,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
     });
 
     describe("*** Transfer ***", async () => {
-      it("frozen address cannot use transfer()", async () => {
+      it("Frozen address cannot use transfer()", async () => {
         const {
           accounts: { initialHolder, governor },
           erc20Bridged,
@@ -67,7 +67,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
         ).to.be.revertedWithCustomError(erc20Bridged, "OnlyNotFrozenAddress");
       });
 
-      it("unfrozen address cannot use transfer() to frozen address", async () => {
+      it("Unfrozen address cannot use transfer() to frozen address", async () => {
         const {
           accounts: { initialHolder, spender, governor },
           erc20Bridged,
@@ -81,7 +81,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
         ).to.be.revertedWithCustomError(erc20Bridged, "OnlyNotFrozenAddress");
       });
 
-      it("unfrozen address can use transfer() to unfrozen address", async () => {
+      it("Unfrozen address can use transfer() to unfrozen address", async () => {
         const {
           accounts: { initialHolder, governor },
           erc20Bridged,
@@ -101,7 +101,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
     });
 
     describe("*** Transfer From ***", async () => {
-      it("frozen address cannot use transferFrom()", async () => {
+      it("Frozen address cannot use transferFrom()", async () => {
         const {
           accounts: { initialHolder, governor },
           erc20Bridged,
@@ -116,7 +116,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
         ).to.be.revertedWithCustomError(erc20Bridged, "OnlyNotFrozenAddress");
       });
 
-      it("unfrozen address cannot use transferFrom() to frozen address", async () => {
+      it("Unfrozen address cannot use transferFrom() to frozen address", async () => {
         const {
           accounts: { initialHolder, spender, governor },
           erc20Bridged,
@@ -137,7 +137,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
         ).to.be.revertedWithCustomError(erc20Bridged, "OnlyNotFrozenAddress");
       });
 
-      it("unfrozen address can use transferFrom() to unfrozen address", async () => {
+      it("Unfrozen address can use transferFrom() to unfrozen address", async () => {
         const {
           accounts: { initialHolder, governor },
           erc20Bridged,
@@ -163,7 +163,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
   });
 
   describe("=== Burn ===", async () => {
-    it("non-admins cannot burn", async () => {
+    it("Non-admins cannot burn", async () => {
       const {
         accounts: { initialHolder, governor },
         erc20Bridged,
@@ -177,7 +177,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
       );
     });
 
-    it("admins cannot burn unfrozen accounts", async () => {
+    it("Admins cannot burn unfrozen accounts", async () => {
       const {
         accounts: { initialHolder, governor },
         erc20Bridged,
@@ -192,7 +192,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
       ).to.be.revertedWithCustomError(erc20Bridged, "OnlyFrozenAddress");
     });
 
-    it("admins cannot burn unfrozen accounts and re-mint to 0x0", async () => {
+    it("Admins cannot burn unfrozen accounts and re-mint to 0x0", async () => {
       const {
         accounts: { initialHolder, governor },
         erc20Bridged,
@@ -213,7 +213,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
       );
     });
 
-    it("admins can burn frozen accounts", async () => {
+    it("Admins can burn frozen accounts", async () => {
       const {
         accounts: { initialHolder, governor },
         erc20Bridged,
@@ -222,7 +222,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
       await freezeAndBurn(erc20Bridged, governor, governor, initialHolder);
     });
 
-    it("admins can burn frozen accounts and re-mint to escrow", async () => {
+    it("Admins can burn frozen accounts and re-mint to escrow", async () => {
       const {
         accounts: { initialHolder, governor, spender },
         erc20Bridged,
@@ -233,7 +233,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
   });
 
   describe("=== Getters ===", async () => {
-    it("nonces() - initial nonce is 0", async () => {
+    it("*** Nonces ***", async () => {
       const {
         accounts: { initialHolder },
         erc20Bridged,
@@ -244,7 +244,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
       );
     });
 
-    it("DOMAIN_SEPARATOR()", async () => {
+    it("*** Domain Separator ***", async () => {
       const { erc20Bridged } = context;
       assert.equal(
         await erc20Bridged.DOMAIN_SEPARATOR(),
@@ -260,7 +260,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
 
   describe("=== Permit ===", async () => {
     describe("*** EOA ***", async () => {
-      it("works as expected", async () => {
+      it(">>> Works as expected", async () => {
         const {
           accounts: { initialHolder, spender },
           erc20Bridged,
@@ -314,7 +314,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
         );
       });
 
-      it("rejects reused signature", async () => {
+      it("Rejects reused signature", async () => {
         const {
           accounts: { initialHolder, spender },
           erc20Bridged,
@@ -357,7 +357,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
         ).to.be.revertedWith("ERC20Permit: invalid signature");
       });
 
-      it("rejects invalid signer", async () => {
+      it("Rejects invalid signer", async () => {
         const {
           accounts: { initialHolder, spender, deployerWallet: invalidSigner },
           erc20Bridged,
@@ -400,7 +400,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
         ).to.be.revertedWith("ERC20Permit: invalid signature");
       });
 
-      it("rejects expired permit deadline", async () => {
+      it("Rejects expired permit deadline", async () => {
         const {
           accounts: { initialHolder, spender },
           erc20Bridged,
@@ -448,7 +448,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
     });
 
     describe("*** ERC1271Wallet ***", async () => {
-      it("works as expected", async () => {
+      it(">>> Works as expected", async () => {
         const {
           accounts: { spender, erc1271WalletOwner },
           erc20Bridged,
@@ -503,7 +503,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
         );
       });
 
-      it("rejects reused signature", async () => {
+      it("Rejects reused signature", async () => {
         const {
           accounts: { spender, erc1271WalletOwner },
           erc20Bridged,
@@ -547,7 +547,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
         ).to.be.revertedWith("ERC20Permit: invalid signature");
       });
 
-      it("rejects invalid signer", async () => {
+      it("Rejects invalid signer", async () => {
         const {
           accounts: { spender, deployerWallet: invalidSigner },
           erc20Bridged,
@@ -591,7 +591,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
         ).to.be.revertedWith("ERC20Permit: invalid signature");
       });
 
-      it("rejects expired permit deadline", async () => {
+      it("Rejects expired permit deadline", async () => {
         const {
           accounts: { spender, erc1271WalletOwner },
           erc20Bridged,

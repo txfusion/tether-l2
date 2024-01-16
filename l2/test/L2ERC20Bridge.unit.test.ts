@@ -2,7 +2,7 @@ import { assert, expect } from "chai";
 import { Contract } from "zksync-web3";
 import { ethers } from "ethers";
 import { describe } from "mocha";
-import { setup } from "./utils/bridge.setup";
+import { setup } from "./setup/bridge.setup";
 
 describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
   let context: Awaited<ReturnType<typeof setup>>;
@@ -31,23 +31,23 @@ describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
   });
 
   describe("=== Getters ===", async () => {
-    it("l1Bridge()", async () => {
+    it("*** L1 Bridge ***", async () => {
       const { l2Erc20Bridge, stubs } = context;
       assert.equal(await l2Erc20Bridge.l1Bridge(), stubs.l1Bridge);
     });
 
-    it("l1Token()", async () => {
+    it("*** L1 Token ***", async () => {
       const { l2Erc20Bridge, stubs } = context;
       assert.equal(await l2Erc20Bridge.l1Token(), stubs.l1Token.address);
     });
 
-    it("l2Token()", async () => {
+    it("*** L2 Token ***", async () => {
       const { l2Erc20Bridge, stubs } = context;
       assert.equal(await l2Erc20Bridge.l2Token(), stubs.l2Token.address);
     });
 
-    describe("*** l1TokenAddress ***", async () => {
-      it("correct L1 token", async () => {
+    describe("*** L1 Token Address ***", async () => {
+      it("Correct L1 token", async () => {
         const { l2Erc20Bridge, stubs } = context;
         const fetchedL1TokenAddress = await l2Erc20Bridge.l1TokenAddress(
           stubs.l2Token.address
@@ -55,7 +55,7 @@ describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
         assert.equal(fetchedL1TokenAddress, stubs.l1Token.address);
       });
 
-      it("incorrect L1 Token", async () => {
+      it("Incorrect L1 Token", async () => {
         const { l2Erc20Bridge, accounts } = context;
         const wrongTokenAddress = accounts.stranger.address;
 
@@ -66,8 +66,8 @@ describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
       });
     });
 
-    describe("*** l2TokenAddress ***", async () => {
-      it("correct L2 Token", async () => {
+    describe("*** L2 Token Address ***", async () => {
+      it("Correct L2 Token", async () => {
         const { l2Erc20Bridge, stubs } = context;
 
         const fetchedL2TokenAddress = await l2Erc20Bridge.l2TokenAddress(
@@ -76,7 +76,7 @@ describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
         assert.equal(fetchedL2TokenAddress, stubs.l2Token.address);
       });
 
-      it("incorrect L2 Token", async () => {
+      it("Incorrect L2 Token", async () => {
         const { l2Erc20Bridge, accounts } = context;
         const wrongTokenAddress = accounts.stranger.address;
 
@@ -89,13 +89,13 @@ describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
   });
 
   describe("=== Deposit ===", async () => {
-    it("deposits are enabled", async () => {
+    it("Deposits enabled?", async () => {
       const { l2Erc20Bridge } = context;
 
       assert.isTrue(await l2Erc20Bridge.isDepositsEnabled());
     });
 
-    it("wrong l1Token address", async () => {
+    it("Wrong L1 Token address", async () => {
       const { l2Erc20Bridge, accounts, l1Erc20Bridge, gasLimit } = context;
       const { deployerWallet, sender, recipient } = accounts;
 
@@ -125,7 +125,7 @@ describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
       ).to.be.revertedWith("ErrorUnsupportedL1Token");
     });
 
-    it("wrong domain sender", async () => {
+    it("Wrong domain sender", async () => {
       const { l2Erc20Bridge, accounts, stubs, l1Erc20BridgeWrong, gasLimit } =
         context;
       const { deployerWallet, sender, recipient } = accounts;
@@ -154,7 +154,7 @@ describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
       ).to.be.revertedWith("ErrorWrongCrossDomainSender");
     });
 
-    it("wrong (zero) value", async () => {
+    it("Wrong (zero) value", async () => {
       const { l2Erc20Bridge, accounts, stubs, l1Erc20Bridge, gasLimit } =
         context;
       const { deployerWallet, sender, recipient } = accounts;
@@ -184,7 +184,7 @@ describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
       ).to.be.reverted;
     });
 
-    it("frozen address cannot finalize deposit", async () => {
+    it("Frozen address cannot finalize deposit", async () => {
       const { l2Erc20Bridge, accounts, stubs, l1Erc20Bridge, gasLimit } =
         context;
       const { deployerWallet, sender, recipient } = accounts;
@@ -221,7 +221,7 @@ describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
         .not.be.reverted;
     });
 
-    it("works as expected", async () => {
+    it(">>> Works as expected", async () => {
       const { l2Erc20Bridge, accounts, stubs, l1Erc20Bridge, gasLimit } =
         context;
       const { deployerWallet, sender, recipient } = accounts;
@@ -304,13 +304,13 @@ describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
   });
 
   describe("=== Withdraw ===", async () => {
-    it("withdrawals are disabled", async () => {
+    it("Withdrawals enabled?", async () => {
       const { l2Erc20Bridge } = context;
 
       assert.isTrue(await l2Erc20Bridge.isWithdrawalsEnabled());
     });
 
-    it("frozen address cannot withdraw", async () => {
+    it("Frozen address cannot withdraw", async () => {
       const { l2Erc20Bridge, accounts, stubs, gasLimit } = context;
       const { deployerWallet } = accounts;
 
@@ -339,7 +339,7 @@ describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
         .to.not.be.reverted;
     });
 
-    it("wrong L2 token", async () => {
+    it("Wrong L2 token", async () => {
       const { l2Erc20Bridge, accounts, stubs, gasLimit } = context;
 
       const { deployerWallet, recipient } = accounts;
@@ -359,7 +359,7 @@ describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
       ).to.be.reverted;
     });
 
-    it("works as expected", async () => {
+    it(">>> Works as expected", async () => {
       const { l2Erc20Bridge, accounts, stubs, gasLimit } = context;
       const { deployerWallet } = accounts;
 

@@ -1,6 +1,6 @@
 import hre, { ethers } from "hardhat";
 import { assert, expect } from "chai";
-import { setup } from "./utils/unit.setup";
+import { setup } from "./setup/unit.setup";
 
 describe("~~~~~ L1ERC20Bridge ~~~~~", async () => {
   let ctx: Awaited<ReturnType<typeof setup>>;
@@ -10,28 +10,28 @@ describe("~~~~~ L1ERC20Bridge ~~~~~", async () => {
   });
 
   describe("=== Getters ===", async () => {
-    it("zkSync()", async () => {
+    it("*** ZkSync ***", async () => {
       const { l1Erc20Bridge, stubs } = ctx;
       assert.equal(await l1Erc20Bridge.zkSync(), stubs.zkSync.address);
     });
 
-    it("l1Token()", async () => {
+    it("*** L1 Token ***", async () => {
       const { l1Erc20Bridge, stubs } = ctx;
       assert.equal(await l1Erc20Bridge.l1Token(), stubs.l1Token.address);
     });
 
-    it("l2Token()", async () => {
+    it("*** L2 Token ***", async () => {
       const { l1Erc20Bridge, stubs } = ctx;
       assert.equal(await l1Erc20Bridge.l2Token(), stubs.l2Token.address);
     });
 
-    it("l2Bridge()", async () => {
+    it("*** L2 Bridge ***", async () => {
       const { l1Erc20Bridge, stubs } = ctx;
       assert.equal(await l1Erc20Bridge.l2Bridge(), stubs.l2Erc20Bridge.address);
     });
 
-    describe("l2TokenAddress()", async () => {
-      it("correct l1Token", async () => {
+    describe("*** L2 Token Address ***", async () => {
+      it("Correct L1 Token", async () => {
         const { l1Erc20Bridge, stubs } = ctx;
         const actualL2TokenAddress = await l1Erc20Bridge.l2TokenAddress(
           stubs.l1Token.address
@@ -40,7 +40,7 @@ describe("~~~~~ L1ERC20Bridge ~~~~~", async () => {
         assert.equal(actualL2TokenAddress, stubs.l2Token.address);
       });
 
-      it("incorrect l1Token", async () => {
+      it("Incorrect L1 Token", async () => {
         const { l1Erc20Bridge, accounts } = ctx;
         const actualL2TokenAddress = await l1Erc20Bridge.l2TokenAddress(
           accounts.stranger.address
@@ -52,12 +52,12 @@ describe("~~~~~ L1ERC20Bridge ~~~~~", async () => {
   });
 
   describe("=== Deposit ===", async () => {
-    it("deposits enabled", async () => {
+    it("Deposits enabled?", async () => {
       const { l1Erc20Bridge } = ctx;
       assert.isTrue(await l1Erc20Bridge.isDepositsEnabled());
     });
 
-    it("disable deposits", async () => {
+    it("> Disable deposits", async () => {
       const {
         accounts: { deployer },
         l1Erc20Bridge,
@@ -78,7 +78,7 @@ describe("~~~~~ L1ERC20Bridge ~~~~~", async () => {
       assert.isFalse(await l1Erc20Bridge.isDepositsEnabled());
     });
 
-    it("wrong l1Token address", async () => {
+    it("Wrong L1 Token address", async () => {
       const {
         accounts: { sender, recipient, stranger: wrongL1Token },
         l1Erc20Bridge,
@@ -101,7 +101,7 @@ describe("~~~~~ L1ERC20Bridge ~~~~~", async () => {
       ).to.be.revertedWith("ErrorUnsupportedL1Token");
     });
 
-    it("wrong (zero) deposit amount", async () => {
+    it("Wrong (zero) deposit amount", async () => {
       const {
         accounts: { sender, recipient },
         l1Erc20Bridge,
@@ -124,7 +124,7 @@ describe("~~~~~ L1ERC20Bridge ~~~~~", async () => {
       ).to.be.revertedWith("The deposit amount can't be zero");
     });
 
-    it("insufficient token allowance for bridge", async () => {
+    it("Insufficient token allowance for bridge", async () => {
       const {
         accounts: { sender, recipient },
         l1Erc20Bridge,
@@ -147,7 +147,7 @@ describe("~~~~~ L1ERC20Bridge ~~~~~", async () => {
       ).to.be.revertedWith("ERC20: insufficient allowance");
     });
 
-    it("works as expected", async () => {
+    it(">>> Works as expected", async () => {
       const {
         accounts: { sender, recipient },
         stubs: { zkSync, l2Erc20Bridge, l1Token },
@@ -262,12 +262,12 @@ describe("~~~~~ L1ERC20Bridge ~~~~~", async () => {
   });
 
   describe("=== Finalize Withdrawal ===", async () => {
-    it("withdrawals enabled", async () => {
+    it("Withdrawals enabled?", async () => {
       const { l1Erc20Bridge } = ctx;
       assert.isTrue(await l1Erc20Bridge.isWithdrawalsEnabled());
     });
 
-    it("disable withdrawals", async () => {
+    it("> Disable withdrawals", async () => {
       const {
         accounts: { deployer },
         l1Erc20Bridge,
@@ -288,7 +288,7 @@ describe("~~~~~ L1ERC20Bridge ~~~~~", async () => {
       assert.isFalse(await l1Erc20Bridge.isWithdrawalsEnabled());
     });
 
-    it("not enough ETH locked on L1 bridge", async () => {
+    it("Not enough ETH locked on L1 bridge", async () => {
       const {
         accounts: { recipient },
         stubs: { l1Token },
@@ -328,7 +328,7 @@ describe("~~~~~ L1ERC20Bridge ~~~~~", async () => {
       ).to.be.revertedWith("ERC20: transfer amount exceeds balance");
     });
 
-    it("works as expected (called by stranger)", async () => {
+    it(">>> Works as expected (called by stranger)", async () => {
       const {
         accounts: { recipient, stranger },
         stubs: { l1Token },
@@ -410,7 +410,7 @@ describe("~~~~~ L1ERC20Bridge ~~~~~", async () => {
   });
 
   describe("=== Claim Failed Deposits ===", async () => {
-    it("nothing to claim", async () => {
+    it("Nothing to claim", async () => {
       const {
         accounts: { sender },
         stubs: { l1Token },
@@ -439,7 +439,7 @@ describe("~~~~~ L1ERC20Bridge ~~~~~", async () => {
       ).to.be.revertedWith("The claimed amount can't be zero");
     });
 
-    it("works us expected", async () => {
+    it("Works us expected", async () => {
       const {
         accounts: { sender, recipient },
         stubs: { zkSync, l1Token },

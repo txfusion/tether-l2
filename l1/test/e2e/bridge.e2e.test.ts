@@ -1,7 +1,7 @@
 import { describe } from "mocha";
 import { assert, expect } from "chai";
 
-import { setup } from "./bridge.setup";
+import { setup } from "./../setup/bridge.setup";
 
 describe("~~~ Bridge E2E testing", async () => {
   let ctx: Awaited<ReturnType<typeof setup>>;
