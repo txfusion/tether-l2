@@ -237,7 +237,7 @@ describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
       const l2TxGasPerPubdataByte = ethers.utils.parseUnits("800", "wei");
       // changes in token supply between two transactions
       let deltaL2TokenSupply;
-      const l2TotalSupplyBefore = await stubs.l2Token.totalSupply();
+      const l2_TotalSupply_Before = await stubs.l2Token.totalSupply();
 
       await expect(
         l1Erc20Bridge.deposit(
@@ -260,9 +260,11 @@ describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
           amount
         );
 
-      const l2TotalSupplyAfterFirstTx = await stubs.l2Token.totalSupply();
+      const l2_TotalSupply_AfterFirstTx = await stubs.l2Token.totalSupply();
 
-      deltaL2TokenSupply = l2TotalSupplyAfterFirstTx.sub(l2TotalSupplyBefore);
+      deltaL2TokenSupply = l2_TotalSupply_AfterFirstTx.sub(
+        l2_TotalSupply_Before
+      );
 
       expect(deltaL2TokenSupply).to.eq(
         amount,
@@ -290,10 +292,10 @@ describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
           amount
         );
 
-      const l2TotalSupplyAfterSecondTx = await stubs.l2Token.totalSupply();
+      const l2_TotalSupply_AfterSecondTx = await stubs.l2Token.totalSupply();
 
-      deltaL2TokenSupply = l2TotalSupplyAfterSecondTx.sub(
-        l2TotalSupplyAfterFirstTx
+      deltaL2TokenSupply = l2_TotalSupply_AfterSecondTx.sub(
+        l2_TotalSupply_AfterFirstTx
       );
 
       expect(deltaL2TokenSupply).to.eq(
@@ -369,7 +371,7 @@ describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
         deployerWallet.address
       );
 
-      const l2TotalSupplyBeforeWith = await stubs.l2Token.totalSupply();
+      const l2_TotalSupply_BeforeWith = await stubs.l2Token.totalSupply();
 
       const deployerBalanceBeforeWith = await stubs.l2Token.balanceOf(
         deployerWallet.address
@@ -405,10 +407,10 @@ describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
         "Change of the recipient balance of L2 token after withdrawal must match withdraw amount"
       );
 
-      const l2TotalSupplyAfterFirstTx = await stubs.l2Token.totalSupply();
+      const l2_TotalSupply_AfterFirstTx = await stubs.l2Token.totalSupply();
 
-      deltaL2TokenSupply = l2TotalSupplyBeforeWith.sub(
-        l2TotalSupplyAfterFirstTx
+      deltaL2TokenSupply = l2_TotalSupply_BeforeWith.sub(
+        l2_TotalSupply_AfterFirstTx
       );
 
       expect(deltaL2TokenSupply).to.eq(
@@ -432,10 +434,10 @@ describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
           amount
         );
 
-      const l2TotalSupplyAfterSecondTx = await stubs.l2Token.totalSupply();
+      const l2_TotalSupply_AfterSecondTx = await stubs.l2Token.totalSupply();
 
-      deltaL2TokenSupply = l2TotalSupplyAfterFirstTx.sub(
-        l2TotalSupplyAfterSecondTx
+      deltaL2TokenSupply = l2_TotalSupply_AfterFirstTx.sub(
+        l2_TotalSupply_AfterSecondTx
       );
 
       expect(deltaL2TokenSupply).to.eq(
