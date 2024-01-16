@@ -103,7 +103,7 @@ async function main() {
   );
   await withdrawResponse.wait();
 
-  const { blockNumber, l1BatchNumber, l1BatchTxIndex } =
+  const { l1BatchNumber, l1BatchTxIndex } =
     await withdrawResponse.waitFinalize();
 
   // Finalize Withdrawal on L1
@@ -119,18 +119,14 @@ async function main() {
     ]
   );
 
-  const messageProof = await zkProvider.getMessageProof(
-    blockNumber,
-    l2BridgeContract.address,
-    ethers.utils.keccak256(message)
-  );
+  const logProof = await zkProvider.getLogProof(withdrawResponse.hash);
 
   const finalizeWithdrawResponse = await l1BridgeContract.finalizeWithdrawal(
     l1BatchNumber,
-    messageProof?.id,
+    logProof?.id,
     l1BatchTxIndex,
     message,
-    messageProof?.proof,
+    logProof?.proof,
     { gasLimit: 10_000_000 }
   );
   await finalizeWithdrawResponse.wait();
