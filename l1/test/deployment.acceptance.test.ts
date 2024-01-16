@@ -7,7 +7,7 @@ import { HASHES } from "../scripts/utils/hashes";
 import { setup } from "./setup/deployment.setup";
 import { ERC20_BRIDGED_CONSTANTS } from "../../l2/scripts/utils/constants";
 import { ProxyAdmin__factory } from "../../l2/typechain";
-import { ZKSYNC_ADDRESSES } from "./e2e/e2e";
+import { ZKSYNC_ADDRESSES } from "./utils/utils";
 
 describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () => {
   let ctx: Awaited<ReturnType<typeof setup>>;
@@ -157,42 +157,8 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
     });
   });
 
-  //   it("L1 Executor :: proxy admin", async () => {
-  //     const {
-  //       l1: {
-  //         proxy: { l1Executor },
-  //       },
-  //     } = ctx;
-
-  //     assert.equal(await l1Executor.proxy__getAdmin(), ZKSYNC_ADDRESSES.l1.agent);
-  //   });
-
-  //   it("L1 Executor :: owner", async () => {
-  //     const {
-  //       l1: { l1Executor },
-  //     } = ctx;
-
-  //     assert.equal(await l1Executor.owner(), ZKSYNC_ADDRESSES.l1.agent);
-  //   });
-
-  /**
-   *
-   * L2
-   *
-   */
-
   describe("=== L2 Bridge ===", async () => {
-    // it("*** Proxy admin ***", async () => {
-    //   const {
-    //     l2: { proxy },
-    //   } = ctx;
-    //   assert.equal(
-    //     await proxy.l2Bridge.proxy__getAdmin(),
-    //     ZKSYNC_ADDRESSES.l2.govExecutor
-    //   );
-    // });
-
-    it("*** Bridge admin ***", async () => {
+    it("*** Bridge Admin ***", async () => {
       const {
         l2: { l2Bridge },
         accounts: { deployer },
@@ -325,39 +291,6 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
   });
 
   describe("=== L2 Token ===", async () => {
-    // it("*** Proxy admin ***", async () => {
-    //   const {
-    //     l2: {
-    //       accounts: { deployer },
-    //     },
-    //     zkProvider,
-    //   } = ctx;
-
-    //   const proxyAdminAddressBytes32 = await zkProvider.getStorageAt(
-    //     ZKSYNC_ADDRESSES.l2.l2Token,
-    //     "0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103" // storage where admin address is stored
-    //   ); // returns bytes32
-
-    //   const proxyAdminAddress = defaultAbiCoder.decode(
-    //     ["address"],
-    //     proxyAdminAddressBytes32
-    //   ); // returns Result => []
-
-    //   const proxyAdminContract = ProxyAdmin__factory.connect(
-    //     proxyAdminAddress[0], // proxyAdminAddress 0 index is the location of address
-    //     deployer
-    //   );
-
-    //   const L2TokenProxyAdminOwner = await proxyAdminContract.owner();
-
-    //   assert.equal(
-    //     L2TokenProxyAdminOwner,
-    //     ethers.utils.getAddress(
-    //       utils.applyL1ToL2Alias(ZKSYNC_ADDRESSES.l1.l1Executor)
-    //     )
-    //   );
-    // });
-
     it("*** Name *** ", async () => {
       const {
         l2: { l2Token },
