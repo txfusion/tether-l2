@@ -169,8 +169,8 @@ describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
       const l2TxGasPerPubdataByte = ethers.utils.parseUnits("800", "wei");
       const ethValue = ethers.utils.parseUnits("1", "ether");
 
-      await expect(
-        l1Erc20Bridge.deposit(
+      expect(
+        await l1Erc20Bridge.deposit(
           recipient.address,
           stubs.l1Token.address,
           amount,
@@ -181,7 +181,7 @@ describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
           "0x",
           { gasLimit, value: ethValue }
         )
-      ).to.be.reverted;
+      ).to.be.revertedWith("The deposit amount can't be zero");
     });
 
     it("Frozen address cannot finalize deposit", async () => {
@@ -199,8 +199,16 @@ describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
       const l2TxGasLimit = ethers.utils.parseUnits("1000", "gwei");
       const l2TxGasPerPubdataByte = ethers.utils.parseUnits("800", "wei");
 
-      await expect(stubs.l2Token.setFrozenStatus(recipient.address, true)).to
-        .not.be.reverted;
+      // await expect(stubs.l2Token.setFrozenStatus(recipient.address, true)).to
+      //   .not.be.reverted;
+      // TODO: fix after .reverted starts working again
+      await (
+        await stubs.l2Token.setFrozenStatus(recipient.address, true)
+      ).wait();
+      assert(
+        await stubs.l2Token.isFrozen(recipient.address),
+        "user is not frozen"
+      );
 
       expect(
         await l1Erc20Bridge.deposit(
@@ -217,8 +225,16 @@ describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
       ).to.be.revertedWithCustomError(stubs.l2Token, "OnlyNotFrozenAddress");
 
       // Revert back to old state
-      await expect(stubs.l2Token.setFrozenStatus(recipient.address, false)).to
-        .not.be.reverted;
+      // await expect(stubs.l2Token.setFrozenStatus(recipient.address, false)).to
+      //   .not.be.reverted;
+      // TODO: fix after .reverted starts working again
+      await (
+        await stubs.l2Token.setFrozenStatus(recipient.address, false)
+      ).wait();
+      assert(
+        (await stubs.l2Token.isFrozen(recipient.address)) == false,
+        "user is still frozen"
+      );
     });
 
     it(">>> Works as expected", async () => {
@@ -314,31 +330,41 @@ describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
 
     it("Frozen address cannot withdraw", async () => {
       const { l2Erc20Bridge, accounts, stubs, gasLimit } = context;
-      const { deployerWallet } = accounts;
-
-      await enableWithdrawalsWithAssertions(
-        l2Erc20Bridge,
-        deployerWallet.address,
-        deployerWallet.address
-      );
+      const { recipient } = accounts;
 
       const amount = ethers.utils.parseUnits("0.5", "ether");
 
-      await expect(stubs.l2Token.setFrozenStatus(deployerWallet.address, true))
-        .to.not.be.reverted;
+      // expect(await stubs.l2Token.setFrozenStatus(recipient.address, true)).to
+      //   .not.be.reverted;
+      // TODO: fix after .reverted starts working again
+      await (
+        await stubs.l2Token.setFrozenStatus(recipient.address, true)
+      ).wait();
+      assert(
+        await stubs.l2Token.isFrozen(recipient.address),
+        "user is not frozen"
+      );
 
       expect(
-        await l2Erc20Bridge.withdraw(
-          deployerWallet.address,
-          stubs.l2Token.address,
-          amount,
-          { gasLimit }
-        )
+        await l2Erc20Bridge
+          .connect(recipient)
+          .withdraw(recipient.address, stubs.l2Token.address, amount, {
+            gasLimit,
+          })
       ).to.be.revertedWithCustomError(stubs.l2Token, "OnlyNotFrozenAddress");
 
       // Revert back to old state
-      await expect(stubs.l2Token.setFrozenStatus(deployerWallet.address, false))
-        .to.not.be.reverted;
+
+      // expect(await stubs.l2Token.setFrozenStatus(recipient.address, false)).to
+      //   .not.be.reverted;
+      // TODO: fix after .reverted starts working again
+      await (
+        await stubs.l2Token.setFrozenStatus(recipient.address, false)
+      ).wait();
+      assert(
+        (await stubs.l2Token.isFrozen(recipient.address)) == false,
+        "user is still frozen"
+      );
     });
 
     it("Wrong L2 token", async () => {
@@ -354,11 +380,13 @@ describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
       const amount = ethers.utils.parseUnits("1", "ether");
       const wrongTokenAddress = stubs.l1Token.address;
 
-      await expect(
-        l2Erc20Bridge.withdraw(recipient.address, wrongTokenAddress, amount, {
-          gasLimit,
-        })
-      ).to.be.reverted;
+      expect(
+        await l2Erc20Bridge
+          .connect(recipient)
+          .withdraw(recipient.address, wrongTokenAddress, amount, {
+            gasLimit,
+          })
+      ).to.be.revertedWithCustomError(l2Erc20Bridge, "ErrorUnsupportedL2Token");
     });
 
     it(">>> Works as expected", async () => {
@@ -373,7 +401,7 @@ describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
 
       const l2_TotalSupply_BeforeWith = await stubs.l2Token.totalSupply();
 
-      const deployerBalanceBeforeWith = await stubs.l2Token.balanceOf(
+      const deployer_Balance_BeforeWith = await stubs.l2Token.balanceOf(
         deployerWallet.address
       );
 
@@ -398,11 +426,11 @@ describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
           amount
         );
 
-      const deployerBalanceAfterWith = await stubs.l2Token.balanceOf(
+      const deployer_Balance_AfterWith = await stubs.l2Token.balanceOf(
         deployerWallet.address
       );
 
-      expect(deployerBalanceBeforeWith.sub(deployerBalanceAfterWith)).to.eq(
+      expect(deployer_Balance_BeforeWith.sub(deployer_Balance_AfterWith)).to.eq(
         amount,
         "Change of the recipient balance of L2 token after withdrawal must match withdraw amount"
       );
