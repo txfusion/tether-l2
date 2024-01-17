@@ -1,5 +1,6 @@
 import hre, { ethers } from "hardhat";
 import * as path from "path";
+import { Wallet as ZkWallet, Provider as ZkProvider } from "zksync-ethers";
 
 import { L1ERC20Bridge__factory, ZkSyncStub__factory } from "../../typechain";
 import {
@@ -37,6 +38,16 @@ const L1_TOKEN_STUB_SYMBOL = "ERC20";
 export async function setup() {
   const [deployer, governor, sender, recipient, stranger] =
     await hre.ethers.getSigners();
+
+  const provider = new ethers.providers.JsonRpcProvider(
+    process.env.ETH_CLIENT_WEB3_URL as string
+  );
+  const zkProvider = new ZkProvider(process.env.ZKSYNC_PROVIDER_URL as string);
+  const zkWallet = new ZkWallet(
+    process.env.PRIVATE_KEY as string,
+    zkProvider,
+    provider
+  );
 
   const zkSyncStub = await new ZkSyncStub__factory(deployer).deploy();
 
@@ -98,5 +109,6 @@ export async function setup() {
       ),
     },
     l1Erc20Bridge,
+    zkWallet,
   };
 }

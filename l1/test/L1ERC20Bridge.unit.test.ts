@@ -328,9 +328,9 @@ describe("~~~~~ L1ERC20Bridge ~~~~~", async () => {
       ).to.be.revertedWith("ERC20: transfer amount exceeds balance");
     });
 
-    it(">>> Works as expected (called by stranger)", async () => {
+    it(">>> Works as expected", async () => {
       const {
-        accounts: { recipient, stranger },
+        accounts: { recipient },
         stubs: { l1Token },
         l1Erc20Bridge,
       } = ctx;
@@ -365,15 +365,13 @@ describe("~~~~~ L1ERC20Bridge ~~~~~", async () => {
         ]
       );
 
-      const finalizeWithdrawalTx = await l1Erc20Bridge
-        .connect(stranger)
-        .finalizeWithdrawal(
-          l2BlockNumber,
-          l2MessageIndex,
-          l2TxNumberInBlock,
-          withdrawMessage,
-          merkleProof
-        );
+      const finalizeWithdrawalTx = await l1Erc20Bridge.finalizeWithdrawal(
+        l2BlockNumber,
+        l2MessageIndex,
+        l2TxNumberInBlock,
+        withdrawMessage,
+        merkleProof
+      );
 
       // validate withdrawal marked as finalized
       assert.isTrue(

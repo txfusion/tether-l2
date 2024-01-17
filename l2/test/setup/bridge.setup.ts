@@ -1,6 +1,6 @@
 import hre from "hardhat";
 
-import { Provider, Wallet, Contract, utils } from "zksync-web3";
+import { Provider, Wallet, Contract, utils } from "zksync-ethers";
 import { richWallet } from "../../../l1/scripts/utils/rich_wallet";
 import { Deployer } from "@matterlabs/hardhat-zksync-deploy";
 

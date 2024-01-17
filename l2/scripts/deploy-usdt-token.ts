@@ -1,6 +1,6 @@
 import * as hre from "hardhat";
 import { Deployer } from "@matterlabs/hardhat-zksync-deploy";
-import { Wallet } from "zksync-web3";
+import { Wallet } from "zksync-ethers";
 
 import { ERC20_BRIDGED_CONSTANTS, PRIVATE_KEY } from "./utils/constants";
 import { verify } from "./utils/verify";

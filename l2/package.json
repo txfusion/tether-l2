@@ -10,7 +10,8 @@
     "verify-l2-bridge": "hardhat run ./scripts/verify-l2-bridge.ts",
     "test": "hardhat test ./test/*.test.ts",
     "test:unit": "hardhat test ./test/*.unit.test.ts",
-    "test:unit:bridge": "hardhat test ./test/L2ERC20Bridge.unit.test.ts"
+    "test:unit:bridge": "hardhat test ./test/L2ERC20Bridge.unit.test.ts",
+    "test:unit:erc20Bridged": "hardhat test ./test/ERC20Bridged.unit.test.ts"
   },
   "license": "ISC",
   "devDependencies": {
@@ -24,8 +25,5 @@
     "@nomiclabs/hardhat-waffle": "^2.0.6",
     "chai": "^4.3.7",
     "typechain": "^8.2.0"
-  },
-  "dependencies": {
-    "zksync-ethers": "5.0.0"
   }
 }

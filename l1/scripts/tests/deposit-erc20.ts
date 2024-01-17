@@ -1,4 +1,4 @@
-import { Wallet, Provider, utils, Contract } from "zksync-web3";
+import { Wallet, Provider, utils, Contract } from "zksync-ethers";
 import * as ethers from "ethers";
 import * as path from "path";
 import {

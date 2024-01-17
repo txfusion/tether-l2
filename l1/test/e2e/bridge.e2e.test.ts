@@ -1,6 +1,6 @@
 import { describe } from "mocha";
 import { assert, expect } from "chai";
-import { Wallet as ZkWallet, utils } from "zksync-web3";
+import { Wallet as ZkWallet, utils } from "zksync-ethers";
 
 import { setup } from "./../setup/bridge.setup";
 import { richWallet } from "../../scripts/utils/rich_wallet";
@@ -10,6 +10,7 @@ import { solidityPack } from "ethers/lib/utils";
 
 describe("~~~ Bridge E2E testing", async () => {
   let ctx: Awaited<ReturnType<typeof setup>>;
+  let withdrawTxHash: string;
 
   before("Setting up the context", async () => {
     ctx = await setup();
@@ -91,20 +92,17 @@ describe("~~~ Bridge E2E testing", async () => {
     it("> Deposit funds onto L1ERC20Bridge", async () => {
       const {
         l1: { l1Token, l1Bridge, accounts },
-        l2: { l2Token, l2Bridge },
+        l2: {
+          l2Token,
+          l2Bridge,
+          accounts: { deployer },
+        },
         zkProvider,
-        ethProvider,
         depositAmount,
         gasLimit,
       } = ctx;
 
       const walletAddress = accounts.deployer.address;
-
-      const zkWallet = new ZkWallet(
-        richWallet[0].privateKey,
-        zkProvider,
-        ethProvider
-      );
 
       assert.isTrue(
         await l1Bridge.isDepositsEnabled(),
@@ -140,7 +138,7 @@ describe("~~~ Bridge E2E testing", async () => {
       const l2GasLimit = await zkProvider.estimateGasL1(depositTx);
       const l2GasPrice = await zkProvider.getGasPrice();
 
-      const baseCost = await zkWallet.getBaseCost({
+      const baseCost = await deployer.getBaseCost({
         gasLimit: l2GasLimit,
         gasPrice: l2GasPrice,
         gasPerPubdataByte: utils.REQUIRED_L1_TO_L2_GAS_PER_PUBDATA_LIMIT,
@@ -219,8 +217,6 @@ describe("~~~ Bridge E2E testing", async () => {
     });
 
     it("> Withdraw tokens from L2 via L2ERC20Bridge", async () => {
-      const IL1Bridge = L1ERC20Bridge__factory.createInterface();
-
       const {
         l1: { l1Token, l1Bridge },
         l2: {
@@ -229,7 +225,6 @@ describe("~~~ Bridge E2E testing", async () => {
           accounts: { deployer },
         },
         withdrawalAmount,
-        zkProvider,
         gasLimit,
       } = ctx;
 
@@ -252,6 +247,7 @@ describe("~~~ Bridge E2E testing", async () => {
       const userL1_TokenBalance_Before = await l1Token.balanceOf(walletAddress);
       const userL2_TokenBalance_Before = await l2Token.balanceOf(walletAddress);
 
+      // Execute withdraw
       const withdrawResponse = await l2Bridge.withdraw(
         walletAddress,
         l2Token.address,
@@ -259,34 +255,15 @@ describe("~~~ Bridge E2E testing", async () => {
         { gasLimit }
       );
 
-      await withdrawResponse.wait();
-      const { l1BatchNumber, l1BatchTxIndex } =
-        await withdrawResponse.waitFinalize();
+      await withdrawResponse.waitFinalize();
 
-      // Finalize Withdrawal on L1
-      const message = solidityPack(
-        ["bytes4", "address", "address", "uint256"],
-        [
-          IL1Bridge.getSighash(IL1Bridge.getFunction("finalizeWithdrawal")),
-          walletAddress,
-          l1Token.address,
-          withdrawalAmount,
-        ]
+      withdrawTxHash = withdrawResponse.hash;
+      const finalizeWithdrawalResponse = await deployer.finalizeWithdrawal(
+        withdrawTxHash
       );
+      await finalizeWithdrawalResponse.wait();
 
-      const logProof = await zkProvider.getLogProof(withdrawResponse.hash);
-
-      const finalizeWithdrawResponse = await l1Bridge.finalizeWithdrawal(
-        l1BatchNumber,
-        logProof?.id,
-        l1BatchTxIndex,
-        message,
-        logProof?.proof,
-        { gasLimit }
-      );
-
-      await finalizeWithdrawResponse.wait();
-
+      // Checks
       const l2Token_TotalSupply_After = await l2Token.totalSupply();
       const l1ERC20Bridge_TokenBalance_After = await l1Token.balanceOf(
         l1Bridge.address
@@ -329,6 +306,23 @@ describe("~~~ Bridge E2E testing", async () => {
         l2Token_UserBalance_Difference.eq(withdrawalAmount),
         `Value ${l2Token_UserBalance_Difference.toString()} is not equal to ${withdrawalAmount.toString()}`
       );
+    });
+
+    it("> Prevents finalization of an already finalized withdrawal", async () => {
+      const {
+        l2: {
+          accounts: { deployer },
+        },
+      } = ctx;
+
+      assert.isTrue(
+        await deployer.isWithdrawalFinalized(withdrawTxHash),
+        "Withdrawal isn't finalized"
+      );
+
+      await expect(
+        deployer.finalizeWithdrawal(withdrawTxHash)
+      ).to.be.revertedWith("Withdrawal is already finalized");
     });
   });
 });

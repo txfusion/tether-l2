@@ -1,12 +1,9 @@
 import { ethers } from "ethers";
-import { utils } from "zksync-web3";
 import { assert } from "chai";
-import { defaultAbiCoder } from "ethers/lib/utils";
 
 import { HASHES } from "../scripts/utils/hashes";
 import { setup } from "./setup/deployment.setup";
 import { ERC20_BRIDGED_CONSTANTS } from "../../l2/scripts/utils/constants";
-import { ProxyAdmin__factory } from "../../l2/typechain";
 import { ZKSYNC_ADDRESSES } from "./utils/utils";
 
 describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () => {

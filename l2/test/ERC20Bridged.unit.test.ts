@@ -1,7 +1,7 @@
 import { assert, expect } from "chai";
-import { BigNumber, ethers } from "ethers";
 import { describe } from "mocha";
-import { Wallet } from "zksync-web3";
+import { BigNumber, ethers } from "ethers";
+import { Wallet } from "zksync-ethers";
 import { setup } from "./setup/erc20.setup";
 import {
   CHAIN_ID,
@@ -239,8 +239,8 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
         erc20Bridged,
       } = context;
       assert.deepEqual(
-        await erc20Bridged.nonces(initialHolder.address),
-        ethers.utils.parseEther("0")
+        (await erc20Bridged.nonces(initialHolder.address)).toString(),
+        BigNumber.from(0).toString()
       );
     });
 
@@ -301,15 +301,14 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
         );
         await permitTx.wait();
 
-        assert.deepEqual(
-          await erc20Bridged.nonces(ownerAddr),
-          BigNumber.from(1),
+        assert.isTrue(
+          (await erc20Bridged.nonces(ownerAddr)).eq(1),
+          // BigNumber.from(1).toString(),
           "Incorrect owner nonce"
         );
 
-        assert.deepEqual(
-          await erc20Bridged.allowance(ownerAddr, spenderAddrs),
-          amount,
+        assert.isTrue(
+          (await erc20Bridged.allowance(ownerAddr, spenderAddrs)).eq(amount),
           "Incorrect spender allowance"
         );
       });
@@ -490,15 +489,13 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
         );
         await permitTx.wait();
 
-        assert.deepEqual(
-          await erc20Bridged.nonces(ownerAddr),
-          BigNumber.from(1),
+        assert.isTrue(
+          (await erc20Bridged.nonces(ownerAddr)).eq(1),
           "Incorrect owner nonce"
         );
 
-        assert.deepEqual(
-          await erc20Bridged.allowance(ownerAddr, spenderAddrs),
-          amount,
+        assert.isTrue(
+          (await erc20Bridged.allowance(ownerAddr, spenderAddrs)).eq(amount),
           "Incorrect spender allowance"
         );
       });
@@ -699,16 +696,16 @@ const freezeAndBurn = async (
   await burnTx.wait();
 
   // User balance should be 0
-  assert.deepEqual(
-    await erc20.balanceOf(toFreezeAndBurn.address),
-    BigNumber.from(0),
-    "Tokens were not burned"
+  assert.isTrue(
+    (await erc20.balanceOf(toFreezeAndBurn.address)).eq(0),
+    "Tokens were not burned from ToFreezeAndBurn"
   );
 
   // Escrow balance should increase by the burned token amount
-  assert.deepEqual(
-    await erc20.balanceOf(escrow.address),
-    escrowBalanceBeforeBurn.add(userBalanceBeforeBurn),
-    "Tokens were not burned"
+  assert.isTrue(
+    (await erc20.balanceOf(escrow.address)).eq(
+      escrowBalanceBeforeBurn.add(userBalanceBeforeBurn)
+    ),
+    "Tokens were not burned to Escrow"
   );
 };

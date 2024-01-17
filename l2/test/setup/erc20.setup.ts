@@ -1,5 +1,5 @@
 import hre from "hardhat";
-import { Wallet, Provider, Contract } from "zksync-web3";
+import { Wallet, Provider, Contract } from "zksync-ethers";
 import { Deployer } from "@matterlabs/hardhat-zksync-deploy";
 import { BigNumber, ethers } from "ethers";
 

@@ -8,7 +8,7 @@ import { Deployer } from "./deploy";
 import { L1ERC20Bridge__factory } from "../typechain";
 
 // L2
-import { Wallet as ZkSyncWallet, Provider, utils, Contract } from "zksync-web3";
+import { Wallet as ZkSyncWallet, Provider } from "zksync-ethers";
 import { L2ERC20Bridge__factory } from "../../l2/typechain";
 
 const PRIVATE_KEY = process.env.PRIVATE_KEY as string;
@@ -21,11 +21,9 @@ async function main() {
   const deployWallet = new Wallet(PRIVATE_KEY, provider);
 
   const zkWallet = new ZkSyncWallet(PRIVATE_KEY, zkProvider);
-
   console.log(`Using deployer wallet: ${deployWallet.address}`);
 
   const gasPrice = await provider.getGasPrice();
-
   console.log(`Using gas price: ${formatUnits(gasPrice, "gwei")} gwei`);
 
   const deployer = new Deployer({
@@ -35,13 +33,6 @@ async function main() {
   });
 
   const l1Bridge = deployer.defaultL1Bridge(deployWallet);
-
-  const zkSync = deployer.zkSyncContract(deployWallet);
-
-  const L1ERC20BridgeAbi = L1ERC20Bridge__factory.abi;
-
-  const IL1ERC20Bridge = new hre.ethers.utils.Interface(L1ERC20BridgeAbi);
-
   const l2Bridge = L2ERC20Bridge__factory.connect(
     deployer.addresses.bridges.l2BridgeProxy,
     zkWallet
@@ -60,16 +51,7 @@ async function main() {
   console.log("\n===============L1===============");
 
   if (!isWithdrawalEnabledOnL1) {
-    const data = IL1ERC20Bridge.encodeFunctionData("enableWithdrawals", []);
-    const enableWithdrawalsTx = await L1GovernorAgent.execute(
-      l1Bridge.address,
-      0,
-      data,
-      {
-        gasLimit: 10_000_000,
-      }
-    );
-
+    const enableWithdrawalsTx = await l1Bridge.enableWithdrawals();
     await enableWithdrawalsTx.wait();
   }
 
@@ -79,6 +61,11 @@ async function main() {
   );
 
   console.log("\n===============L2===============");
+
+  if (!isWithdrawalEnabledOnL2) {
+    const enableWithdrawalsTx = await l2Bridge.enableWithdrawals();
+    await enableWithdrawalsTx.wait();
+  }
 
   console.log(
     "\nWITHDRAWALS ENABLED ON L2 BRIDGE:",

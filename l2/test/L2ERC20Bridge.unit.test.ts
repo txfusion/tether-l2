@@ -1,5 +1,5 @@
 import { assert, expect } from "chai";
-import { Contract } from "zksync-web3";
+import { Contract } from "zksync-ethers";
 import { ethers } from "ethers";
 import { describe } from "mocha";
 import { setup } from "./setup/bridge.setup";
