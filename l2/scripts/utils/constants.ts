@@ -1,6 +1,4 @@
 export const ADDRESSES = {
-  L1_EXECUTOR_ADDR: process.env.L1_EXECUTOR_ADDR as string,
-  L2_BRIDGE_EXECUTOR_ADDR: process.env.L2_BRIDGE_EXECUTOR_ADDR as string,
   L2_BRIDGE_PROXY_ADDR: process.env.CONTRACTS_L2_BRIDGE_PROXY_ADDR as string,
   L2_TOKEN_ADDR: process.env.CONTRACTS_L2_TOKEN_PROXY_ADDR as string,
 };

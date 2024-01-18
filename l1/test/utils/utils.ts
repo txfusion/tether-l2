@@ -4,7 +4,7 @@ export const ZKSYNC_ADDRESSES = {
     l1Bridge: process.env.CONTRACTS_L1_BRIDGE_PROXY_ADDR as string,
   },
   l2: {
-    l2Token: process.env.CONTRACTS_L2_TOKEN_PROXY_ADDR as string, // connection tests to l1 succeed, erc20 tests fails
+    l2Token: process.env.CONTRACTS_L2_TOKEN_PROXY_ADDR as string,
     l2Bridge: process.env.CONTRACTS_L2_BRIDGE_PROXY_ADDR as string,
   },
 };

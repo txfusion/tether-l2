@@ -1,12 +1,9 @@
 import { describe } from "mocha";
 import { assert, expect } from "chai";
-import { Wallet as ZkWallet, utils } from "zksync-ethers";
+import { utils } from "zksync-ethers";
 
-import { setup } from "./../setup/bridge.setup";
-import { richWallet } from "../../scripts/utils/rich_wallet";
+import { setup } from "./setup/bridge.setup";
 import { BigNumber } from "ethers";
-import { L1ERC20Bridge__factory } from "../../typechain";
-import { solidityPack } from "ethers/lib/utils";
 
 describe("~~~ Bridge E2E testing", async () => {
   let ctx: Awaited<ReturnType<typeof setup>>;

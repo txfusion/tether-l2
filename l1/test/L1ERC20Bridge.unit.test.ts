@@ -437,7 +437,7 @@ describe("~~~~~ L1ERC20Bridge ~~~~~", async () => {
       ).to.be.revertedWith("The claimed amount can't be zero");
     });
 
-    it("Works us expected", async () => {
+    it(">>> Works as expected", async () => {
       const {
         accounts: { sender, recipient },
         stubs: { zkSync, l1Token },
