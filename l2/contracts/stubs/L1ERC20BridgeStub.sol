@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.13;
 
-import {IL2ERC20Bridge} from "../interfaces/IL2ERC20Bridge.sol";
+import {IL2ERC20Bridge} from "../../../common/interfaces/IL2ERC20Bridge.sol";
 
 contract L1ERC20BridgeStub {
     function deposit(

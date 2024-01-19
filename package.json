@@ -4,7 +4,13 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "compile": "hardhat compile"    
+    "all": "npm run compile && npm run deploy && npm run test",
+    "compile": "sh ./compile.sh",
+    "deploy": "sh ./deploy.sh",
+    "test": "cd l1 && npm run test:unit && npm run test:deployment-acceptance && npm run test:e2e && cd ../l2 && npm run test:unit",
+    "test:e2e": "cd l1 && npm run test:e2e",
+    "test:deployment-acceptance": "cd l1 && npm run test:deployment-acceptance",
+    "test:unit": "cd l1 && npm run test:unit && cd ../l2 && npm run test:unit"
   },
   "license": "ISC",
   "devDependencies": {
@@ -21,14 +27,14 @@
     "dotenv": "^10.0.0",
     "ethereum-waffle": "^3.4.4",
     "ethers": "^5.6.2",
-    "hardhat": "^2.9.9",  
+    "hardhat": "^2.9.9",
     "ts-node": "^10.7.0",
     "typechain": "^5.2.0",
     "typescript": "^4.6.3"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^4.6.0",
-    "@openzeppelin/contracts-upgradeable": "^4.9.0"
-
+    "@openzeppelin/contracts-upgradeable": "^4.9.0",
+    "zksync-ethers": "5.0.0"
   }
 }

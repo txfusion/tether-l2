@@ -2,11 +2,16 @@
 
 pragma solidity ^0.8.10;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 /// @notice Upgradable version of contract that contains the required logic of the ERC20 standard as defined in the EIP.
 /// Additionally provides methods for direct allowance increasing/decreasing.
 contract ERC20CoreUpgradeable is IERC20Upgradeable {
+    error ErrorNotEnoughBalance();
+    error ErrorNotEnoughAllowance();
+    error ErrorAccountIsZeroAddress();
+    error ErrorDecreasedAllowanceBelowZero();
+
     /// @inheritdoc IERC20Upgradeable
     uint256 public totalSupply;
 
@@ -15,6 +20,14 @@ contract ERC20CoreUpgradeable is IERC20Upgradeable {
 
     /// @inheritdoc IERC20Upgradeable
     mapping(address => mapping(address => uint256)) public allowance;
+
+    /// @dev validates that account_ is not zero address
+    modifier onlyNonZeroAccount(address account_) {
+        if (account_ == address(0)) {
+            revert ErrorAccountIsZeroAddress();
+        }
+        _;
+    }
 
     /// @inheritdoc IERC20Upgradeable
     function approve(
@@ -26,7 +39,10 @@ contract ERC20CoreUpgradeable is IERC20Upgradeable {
     }
 
     /// @inheritdoc IERC20Upgradeable
-    function transfer(address to_, uint256 amount_) external returns (bool) {
+    function transfer(
+        address to_,
+        uint256 amount_
+    ) public virtual returns (bool) {
         _transfer(msg.sender, to_, amount_);
         return true;
     }
@@ -36,7 +52,7 @@ contract ERC20CoreUpgradeable is IERC20Upgradeable {
         address from_,
         address to_,
         uint256 amount_
-    ) external returns (bool) {
+    ) public virtual returns (bool) {
         _spendAllowance(from_, msg.sender, amount_);
         _transfer(from_, to_, amount_);
         return true;
@@ -160,17 +176,4 @@ contract ERC20CoreUpgradeable is IERC20Upgradeable {
             balanceOf[account_] = balance - amount_;
         }
     }
-
-    /// @dev validates that account_ is not zero address
-    modifier onlyNonZeroAccount(address account_) {
-        if (account_ == address(0)) {
-            revert ErrorAccountIsZeroAddress();
-        }
-        _;
-    }
-
-    error ErrorNotEnoughBalance();
-    error ErrorNotEnoughAllowance();
-    error ErrorAccountIsZeroAddress();
-    error ErrorDecreasedAllowanceBelowZero();
 }

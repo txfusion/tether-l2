@@ -3,8 +3,8 @@
 pragma solidity ^0.8.10;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/interfaces/IERC1271.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 contract ERC1271WalletStub is Ownable, IERC1271 {
     constructor(address originalOwner) {

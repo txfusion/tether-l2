@@ -1,4 +1,4 @@
-import { Wallet, Provider, Contract } from "zksync-web3";
+import { Wallet, Provider, Contract } from "zksync-ethers";
 import * as ethers from "ethers";
 import * as path from "path";
 import {
@@ -101,37 +101,12 @@ async function main() {
     AMOUNT_TO_WITHDRAW,
     { gasLimit: 10_000_000 }
   );
-  await withdrawResponse.wait();
 
-  const { blockNumber, l1BatchNumber, l1BatchTxIndex } =
-    await withdrawResponse.waitFinalize();
+  await withdrawResponse.waitFinalize();
 
   // Finalize Withdrawal on L1
-  const message = ethers.utils.solidityPack(
-    ["bytes4", "address", "address", "uint256"],
-    [
-      L1_BRIDGE_PROXY_INTERFACE.getSighash(
-        L1_BRIDGE_PROXY_INTERFACE.getFunction("finalizeWithdrawal")
-      ),
-      wallet.address,
-      l1TokenContract.address,
-      AMOUNT_TO_WITHDRAW,
-    ]
-  );
-
-  const messageProof = await zkProvider.getMessageProof(
-    blockNumber,
-    l2BridgeContract.address,
-    ethers.utils.keccak256(message)
-  );
-
-  const finalizeWithdrawResponse = await l1BridgeContract.finalizeWithdrawal(
-    l1BatchNumber,
-    messageProof?.id,
-    l1BatchTxIndex,
-    message,
-    messageProof?.proof,
-    { gasLimit: 10_000_000 }
+  const finalizeWithdrawResponse = await zkWallet.finalizeWithdrawal(
+    withdrawResponse.hash
   );
   await finalizeWithdrawResponse.wait();
 

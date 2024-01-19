@@ -1,4 +1,4 @@
-import { Wallet, Provider, Contract, utils } from "zksync-web3";
+import { Wallet, Provider, Contract, utils } from "zksync-ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 import * as hre from "hardhat";

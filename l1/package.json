@@ -12,9 +12,10 @@
     "test-deposit": "hardhat run scripts/tests/deposit-erc20.ts",
     "test-withdraw": "hardhat run scripts/tests/withdraw-erc20.ts",
     "upgrade-l2-token": "hardhat run scripts/tests/upgrade-l2-token.ts",
-    "zksync:test:unit": "hardhat test ./test/*.unit.test.ts",
-    "zksync:test:e2e": "hardhat test ./test/e2e/*.e2e.test.ts",
-    "deployment-acceptance": "hardhat test ./test/deployment.acceptance.test.ts"
+    "test": "hardhat test ./test/*.test.ts",
+    "test:unit": "hardhat test ./test/*.unit.test.ts",
+    "test:e2e": "hardhat test ./test/*.e2e.test.ts",
+    "test:deployment-acceptance": "hardhat test ./test/deployment.acceptance.test.ts"
   },
   "license": "ISC",
   "devDependencies": {

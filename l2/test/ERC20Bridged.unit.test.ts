@@ -1,22 +1,14 @@
-import hre from "hardhat";
 import { assert, expect } from "chai";
-import { Wallet, Provider, Contract } from "zksync-web3";
-import { Deployer } from "@matterlabs/hardhat-zksync-deploy";
-import { ethers, BigNumber } from "ethers";
 import { describe } from "mocha";
-
-import { richWallet } from "../../l1/scripts/utils/rich_wallet";
-import { domainSeparator } from "./utils/eip712";
+import { BigNumber, ethers } from "ethers";
+import { Wallet } from "zksync-ethers";
+import { setup } from "./setup/erc20.setup";
 import {
-  PROVIDER_URL,
   CHAIN_ID,
   L2_TOKEN_NAME,
-  L2_TOKEN_SYMBOL,
-  L2_TOKEN_DECIMALS,
   L2_TOKEN_SINGING_DOMAIN_VERSION,
 } from "./utils/constants";
-
-const INITIAL_BALANCE = ethers.utils.parseEther("10");
+import { domainSeparator } from "./utils/eip712";
 
 const types: Record<string, ethers.TypedDataField[]> = {
   Permit: [
@@ -28,426 +20,692 @@ const types: Record<string, ethers.TypedDataField[]> = {
   ],
 };
 
-describe("ZkSync :: ERC20Bridged", async () => {
-  async function setup() {
-    const provider = new Provider(PROVIDER_URL);
-
-    const deployerWallet = new Wallet(richWallet[0].privateKey, provider);
-    const governor = new Wallet(richWallet[1].privateKey, provider);
-    const initialHolder = new Wallet(richWallet[2].privateKey, provider);
-    const spender = new Wallet(richWallet[3].privateKey, provider);
-    const erc1271WalletOwner = new Wallet(richWallet[4].privateKey, provider);
-
-    const deployer = new Deployer(hre, deployerWallet);
-
-    const ossifiableProxyArtifact = await deployer.loadArtifact(
-      "OssifiableProxy"
-    );
-
-    // L2 token
-    const erc20BridgedArtifact = await deployer.loadArtifact(
-      "ERC20BridgedUpgradeable"
-    );
-    const erc20BridgedContract = await deployer.deploy(
-      erc20BridgedArtifact,
-      []
-    );
-    const erc20BridgedImpl = await erc20BridgedContract.deployed();
-
-    // proxy
-    const erc20BridgedProxyContract = await deployer.deploy(
-      ossifiableProxyArtifact,
-      [erc20BridgedImpl.address, governor.address, "0x"]
-    );
-    const erc20BridgedProxy = await erc20BridgedProxyContract.deployed();
-
-    const erc20Bridged = new Contract(
-      erc20BridgedProxy.address,
-      erc20BridgedArtifact.abi,
-      deployer.zkWallet
-    );
-
-    const initTx = await erc20Bridged[
-      "__ERC20BridgedUpgradeable_init(string,string,uint8)"
-    ](L2_TOKEN_NAME, L2_TOKEN_SYMBOL, L2_TOKEN_DECIMALS);
-    await initTx.wait();
-
-    const initV2Tx = await erc20Bridged[
-      "__ERC20BridgedUpgradeable_init_v2(address)"
-    ](deployerWallet.address);
-    await initV2Tx.wait();
-
-    const erc1271WalletArtifact = await deployer.loadArtifact(
-      "ERC1271WalletStub"
-    );
-
-    const erc1271WalletContract = await deployer.deploy(erc1271WalletArtifact, [
-      erc1271WalletOwner.address,
-    ]);
-    await erc1271WalletContract.deployed();
-
-    // mint initial balance to initialHolder wallet
-    await (
-      await erc20Bridged.bridgeMint(initialHolder.address, INITIAL_BALANCE)
-    ).wait();
-
-    // mint initial balance to smart contract wallet
-    await (
-      await erc20Bridged.bridgeMint(
-        erc1271WalletContract.address,
-        INITIAL_BALANCE
-      )
-    ).wait();
-
-    return {
-      accounts: {
-        deployerWallet,
-        governor,
-        initialHolder,
-        spender,
-        erc1271WalletOwner,
-      },
-      erc20Bridged,
-      erc1271Wallet: erc1271WalletContract,
-      domain: {
-        name: L2_TOKEN_NAME,
-        version: L2_TOKEN_SINGING_DOMAIN_VERSION,
-        chainId: CHAIN_ID,
-        verifyingContract: erc20Bridged.address,
-      },
-      gasLimit: 10_000_000,
-    };
-  }
-
+describe("~~~~~ ERC20Bridged ~~~~~", async () => {
   let context: Awaited<ReturnType<typeof setup>>;
 
   before("Setting up the context", async () => {
     context = await setup();
   });
 
-  it("nonces() :: initial nonce is 0", async () => {
-    const {
-      accounts: { initialHolder },
-      erc20Bridged,
-    } = context;
-    assert.deepEqual(
-      await erc20Bridged.nonces(initialHolder.address),
-      ethers.utils.parseEther("0")
-    );
+  describe("=== Freeze ===", async () => {
+    const AMOUNT = 1;
+
+    it("Non-admins cannot freeze", async () => {
+      const {
+        accounts: { initialHolder, governor },
+        erc20Bridged,
+        roles: { ADDRESS_FREEZER_ROLE },
+      } = context;
+
+      await expect(
+        erc20Bridged.connect(initialHolder).freezeAddress(governor.address)
+      ).to.be.revertedWith(
+        `AccessControl: account ${initialHolder.address.toLowerCase()} is missing role ${ADDRESS_FREEZER_ROLE}`
+      );
+    });
+
+    it("Admins can freeze", async () => {
+      const {
+        accounts: { initialHolder, governor },
+        erc20Bridged,
+      } = context;
+
+      await freezeAddress(erc20Bridged, governor, initialHolder);
+    });
+
+    describe("*** Transfer ***", async () => {
+      it("Frozen address cannot use transfer()", async () => {
+        const {
+          accounts: { initialHolder, governor },
+          erc20Bridged,
+        } = context;
+
+        await freezeAddress(erc20Bridged, governor, initialHolder);
+
+        await expect(
+          erc20Bridged.connect(initialHolder).transfer(governor.address, AMOUNT)
+        ).to.be.revertedWithCustomError(erc20Bridged, "OnlyNotFrozenAddress");
+      });
+
+      it("Unfrozen address cannot use transfer() to frozen address", async () => {
+        const {
+          accounts: { initialHolder, spender, governor },
+          erc20Bridged,
+        } = context;
+
+        await unfreezeAddress(erc20Bridged, governor, initialHolder);
+        await freezeAddress(erc20Bridged, governor, spender);
+
+        await expect(
+          erc20Bridged.connect(initialHolder).transfer(spender.address, AMOUNT)
+        ).to.be.revertedWithCustomError(erc20Bridged, "OnlyNotFrozenAddress");
+      });
+
+      it("Unfrozen address can use transfer() to unfrozen address", async () => {
+        const {
+          accounts: { initialHolder, governor },
+          erc20Bridged,
+        } = context;
+
+        await unfreezeAddress(erc20Bridged, governor, initialHolder);
+
+        const transferTx = await erc20Bridged
+          .connect(initialHolder)
+          .transfer(governor.address, AMOUNT);
+        await transferTx.wait();
+
+        expect(await erc20Bridged.balanceOf(governor.address)).to.be.equal(
+          AMOUNT
+        );
+      });
+    });
+
+    describe("*** Transfer From ***", async () => {
+      it("Frozen address cannot use transferFrom()", async () => {
+        const {
+          accounts: { initialHolder, governor },
+          erc20Bridged,
+        } = context;
+
+        await freezeAddress(erc20Bridged, governor, initialHolder);
+
+        await expect(
+          erc20Bridged
+            .connect(initialHolder)
+            .transferFrom(initialHolder.address, governor.address, AMOUNT)
+        ).to.be.revertedWithCustomError(erc20Bridged, "OnlyNotFrozenAddress");
+      });
+
+      it("Unfrozen address cannot use transferFrom() to frozen address", async () => {
+        const {
+          accounts: { initialHolder, spender, governor },
+          erc20Bridged,
+        } = context;
+
+        await unfreezeAddress(erc20Bridged, governor, initialHolder);
+        await freezeAddress(erc20Bridged, governor, spender);
+
+        const allowTx = await erc20Bridged
+          .connect(initialHolder)
+          .increaseAllowance(governor.address, AMOUNT);
+        await allowTx.wait();
+
+        await expect(
+          erc20Bridged
+            .connect(governor)
+            .transferFrom(initialHolder.address, spender.address, AMOUNT)
+        ).to.be.revertedWithCustomError(erc20Bridged, "OnlyNotFrozenAddress");
+      });
+
+      it("Unfrozen address can use transferFrom() to unfrozen address", async () => {
+        const {
+          accounts: { initialHolder, governor },
+          erc20Bridged,
+        } = context;
+
+        await unfreezeAddress(erc20Bridged, governor, initialHolder);
+
+        const allowTx = await erc20Bridged
+          .connect(initialHolder)
+          .increaseAllowance(governor.address, AMOUNT);
+        await allowTx.wait();
+
+        const transferTx = await erc20Bridged
+          .connect(governor)
+          .transferFrom(initialHolder.address, governor.address, AMOUNT);
+        await transferTx.wait();
+
+        expect(await erc20Bridged.balanceOf(governor.address)).to.be.equal(
+          AMOUNT * 2
+        ); // AMOUNT * 2 because of the previous "transfer" test
+      });
+    });
   });
 
-  it("DOMAIN_SEPARATOR()", async () => {
-    const { erc20Bridged } = context;
-    assert.equal(
-      await erc20Bridged.DOMAIN_SEPARATOR(),
-      domainSeparator(
-        L2_TOKEN_NAME,
-        L2_TOKEN_SINGING_DOMAIN_VERSION,
-        CHAIN_ID,
-        erc20Bridged.address
-      )
-    );
+  describe("=== Burn ===", async () => {
+    it("Non-admins cannot burn", async () => {
+      const {
+        accounts: { initialHolder, governor },
+        erc20Bridged,
+        roles: { ADDRESS_BURNER_ROLE },
+      } = context;
+
+      await expect(
+        erc20Bridged.connect(initialHolder).burnFrozenTokens(governor.address)
+      ).to.be.revertedWith(
+        `AccessControl: account ${initialHolder.address.toLowerCase()} is missing role ${ADDRESS_BURNER_ROLE}`
+      );
+    });
+
+    it("Admins cannot burn unfrozen accounts", async () => {
+      const {
+        accounts: { initialHolder, governor },
+        erc20Bridged,
+      } = context;
+
+      await freezeAddress(erc20Bridged, governor, initialHolder);
+
+      expect(
+        await erc20Bridged
+          .connect(governor)
+          .burnFrozenTokens(initialHolder.address)
+      ).to.be.revertedWithCustomError(erc20Bridged, "OnlyFrozenAddress");
+    });
+
+    it("Admins cannot burn unfrozen accounts and re-mint to 0x0", async () => {
+      const {
+        accounts: { initialHolder, governor },
+        erc20Bridged,
+      } = context;
+
+      await freezeAddress(erc20Bridged, governor, initialHolder);
+
+      await expect(
+        erc20Bridged
+          .connect(governor)
+          .burnFrozenTokensEscrow(
+            initialHolder.address,
+            ethers.constants.AddressZero
+          )
+      ).to.be.revertedWithCustomError(
+        erc20Bridged,
+        "ErrorAccountIsZeroAddress"
+      );
+    });
+
+    it("Admins can burn frozen accounts", async () => {
+      const {
+        accounts: { initialHolder, governor },
+        erc20Bridged,
+      } = context;
+
+      await freezeAndBurn(erc20Bridged, governor, governor, initialHolder);
+    });
+
+    it("Admins can burn frozen accounts and re-mint to escrow", async () => {
+      const {
+        accounts: { initialHolder, governor, spender },
+        erc20Bridged,
+      } = context;
+
+      await freezeAndBurn(erc20Bridged, governor, spender, initialHolder);
+    });
   });
 
-  it("permit() :: EOA :: works as expected", async () => {
-    const {
-      accounts: { initialHolder, spender },
-      erc20Bridged,
-      domain,
-    } = context;
+  describe("=== Getters ===", async () => {
+    it("*** Nonces ***", async () => {
+      const {
+        accounts: { initialHolder },
+        erc20Bridged,
+      } = context;
+      assert.deepEqual(
+        (await erc20Bridged.nonces(initialHolder.address)).toString(),
+        BigNumber.from(0).toString()
+      );
+    });
 
-    const ownerAddr = initialHolder.address;
-    const spenderAddrs = spender.address;
-    const amount = ethers.utils.parseEther("1");
-    const ownerNonce = 0;
-    const deadline = ethers.constants.MaxUint256;
-
-    const value = {
-      owner: ownerAddr,
-      spender: spenderAddrs,
-      value: amount,
-      nonce: ownerNonce,
-      deadline,
-    };
-
-    const signature = await initialHolder._signTypedData(domain, types, value);
-    const r = signature.slice(0, 66);
-    const s = "0x" + signature.slice(66, 130);
-    const v = "0x" + signature.slice(130, 132);
-
-    const permitTx = await erc20Bridged.permit(
-      ownerAddr,
-      spenderAddrs,
-      amount,
-      deadline,
-      v,
-      r,
-      s
-    );
-    await permitTx.wait();
-
-    assert.deepEqual(
-      await erc20Bridged.nonces(ownerAddr),
-      BigNumber.from(1),
-      "Incorrect owner nonce"
-    );
-
-    assert.deepEqual(
-      await erc20Bridged.allowance(ownerAddr, spenderAddrs),
-      amount,
-      "Incorrect spender allowance"
-    );
+    it("*** Domain Separator ***", async () => {
+      const { erc20Bridged } = context;
+      assert.equal(
+        await erc20Bridged.DOMAIN_SEPARATOR(),
+        domainSeparator(
+          L2_TOKEN_NAME,
+          L2_TOKEN_SINGING_DOMAIN_VERSION,
+          CHAIN_ID,
+          erc20Bridged.address
+        )
+      );
+    });
   });
 
-  it("permit() :: EOA :: rejects reused signature", async () => {
-    const {
-      accounts: { initialHolder, spender },
-      erc20Bridged,
-      domain,
-    } = context;
+  describe("=== Permit ===", async () => {
+    describe("*** EOA ***", async () => {
+      it(">>> Works as expected", async () => {
+        const {
+          accounts: { initialHolder, spender },
+          erc20Bridged,
+          domain,
+        } = context;
 
-    const ownerAddr = initialHolder.address;
-    const spenderAddrs = spender.address;
-    const amount = ethers.utils.parseEther("1");
-    const ownerNonce = 0;
-    const deadline = ethers.constants.MaxUint256;
+        const ownerAddr = initialHolder.address;
+        const spenderAddrs = spender.address;
+        const amount = ethers.utils.parseEther("1");
+        const ownerNonce = 0;
+        const deadline = ethers.constants.MaxUint256;
 
-    const value = {
-      owner: ownerAddr,
-      spender: spenderAddrs,
-      value: amount,
-      nonce: ownerNonce,
-      deadline,
-    };
+        const value = {
+          owner: ownerAddr,
+          spender: spenderAddrs,
+          value: amount,
+          nonce: ownerNonce,
+          deadline,
+        };
 
-    const signature = await initialHolder._signTypedData(domain, types, value);
-    const r = signature.slice(0, 66);
-    const s = "0x" + signature.slice(66, 130);
-    const v = "0x" + signature.slice(130, 132);
+        const signature = await initialHolder._signTypedData(
+          domain,
+          types,
+          value
+        );
+        const r = signature.slice(0, 66);
+        const s = "0x" + signature.slice(66, 130);
+        const v = "0x" + signature.slice(130, 132);
 
-    await expect(
-      erc20Bridged.permit(ownerAddr, spenderAddrs, amount, deadline, v, r, s)
-    ).to.be.revertedWith("ERC20Permit: invalid signature");
-  });
+        const permitTx = await erc20Bridged.permit(
+          ownerAddr,
+          spenderAddrs,
+          amount,
+          deadline,
+          v,
+          r,
+          s
+        );
+        await permitTx.wait();
 
-  it("permit() :: EOA :: rejects invalid signer", async () => {
-    const {
-      accounts: { initialHolder, spender, deployerWallet: invalidSigner },
-      erc20Bridged,
-      domain,
-    } = context;
+        assert.isTrue(
+          (await erc20Bridged.nonces(ownerAddr)).eq(1),
+          // BigNumber.from(1).toString(),
+          "Incorrect owner nonce"
+        );
 
-    const ownerAddr = initialHolder.address;
-    const spenderAddrs = spender.address;
-    const amount = ethers.utils.parseEther("1");
-    const ownerNonce = 1;
-    const deadline = ethers.constants.MaxUint256;
+        assert.isTrue(
+          (await erc20Bridged.allowance(ownerAddr, spenderAddrs)).eq(amount),
+          "Incorrect spender allowance"
+        );
+      });
 
-    const value = {
-      owner: ownerAddr,
-      spender: spenderAddrs,
-      value: amount,
-      nonce: ownerNonce,
-      deadline,
-    };
+      it("Rejects reused signature", async () => {
+        const {
+          accounts: { initialHolder, spender },
+          erc20Bridged,
+          domain,
+        } = context;
 
-    const signature = await invalidSigner._signTypedData(domain, types, value);
-    const r = signature.slice(0, 66);
-    const s = "0x" + signature.slice(66, 130);
-    const v = "0x" + signature.slice(130, 132);
+        const ownerAddr = initialHolder.address;
+        const spenderAddrs = spender.address;
+        const amount = ethers.utils.parseEther("1");
+        const ownerNonce = 0;
+        const deadline = ethers.constants.MaxUint256;
 
-    await expect(
-      erc20Bridged.permit(ownerAddr, spenderAddrs, amount, deadline, v, r, s)
-    ).to.be.revertedWith("ERC20Permit: invalid signature");
-  });
+        const value = {
+          owner: ownerAddr,
+          spender: spenderAddrs,
+          value: amount,
+          nonce: ownerNonce,
+          deadline,
+        };
 
-  it("permit() :: EOA :: rejects expired permit deadline", async () => {
-    const {
-      accounts: { initialHolder, spender },
-      erc20Bridged,
-      domain,
-    } = context;
+        const signature = await initialHolder._signTypedData(
+          domain,
+          types,
+          value
+        );
+        const r = signature.slice(0, 66);
+        const s = "0x" + signature.slice(66, 130);
+        const v = "0x" + signature.slice(130, 132);
 
-    const ownerAddr = initialHolder.address;
-    const spenderAddrs = spender.address;
-    const amount = ethers.utils.parseEther("1");
-    const ownerNonce = 1;
-    const deadline = Math.floor(Date.now() / 1000) - 604_800; // 1 week = 604_800 s
+        await expect(
+          erc20Bridged.permit(
+            ownerAddr,
+            spenderAddrs,
+            amount,
+            deadline,
+            v,
+            r,
+            s
+          )
+        ).to.be.revertedWith("ERC20Permit: invalid signature");
+      });
 
-    const value = {
-      owner: ownerAddr,
-      spender: spenderAddrs,
-      value: amount,
-      nonce: ownerNonce,
-      deadline,
-    };
+      it("Rejects invalid signer", async () => {
+        const {
+          accounts: { initialHolder, spender, deployerWallet: invalidSigner },
+          erc20Bridged,
+          domain,
+        } = context;
 
-    const signature = await initialHolder._signTypedData(domain, types, value);
-    const r = signature.slice(0, 66);
-    const s = "0x" + signature.slice(66, 130);
-    const v = "0x" + signature.slice(130, 132);
+        const ownerAddr = initialHolder.address;
+        const spenderAddrs = spender.address;
+        const amount = ethers.utils.parseEther("1");
+        const ownerNonce = 1;
+        const deadline = ethers.constants.MaxUint256;
 
-    await expect(
-      erc20Bridged.permit(ownerAddr, spenderAddrs, amount, deadline, v, r, s)
-    ).to.be.revertedWithCustomError(erc20Bridged, "ERC2612ExpiredSignature");
-  });
+        const value = {
+          owner: ownerAddr,
+          spender: spenderAddrs,
+          value: amount,
+          nonce: ownerNonce,
+          deadline,
+        };
 
-  it("permit() :: ERC1271Wallet :: works as expected", async () => {
-    const {
-      accounts: { spender, erc1271WalletOwner },
-      erc20Bridged,
-      erc1271Wallet,
-      domain,
-    } = context;
+        const signature = await invalidSigner._signTypedData(
+          domain,
+          types,
+          value
+        );
+        const r = signature.slice(0, 66);
+        const s = "0x" + signature.slice(66, 130);
+        const v = "0x" + signature.slice(130, 132);
 
-    const ownerAddr = erc1271Wallet.address;
-    const spenderAddrs = spender.address;
-    const amount = ethers.utils.parseEther("1");
-    const ownerNonce = 0;
-    const deadline = ethers.constants.MaxUint256;
+        await expect(
+          erc20Bridged.permit(
+            ownerAddr,
+            spenderAddrs,
+            amount,
+            deadline,
+            v,
+            r,
+            s
+          )
+        ).to.be.revertedWith("ERC20Permit: invalid signature");
+      });
 
-    const value = {
-      owner: ownerAddr,
-      spender: spenderAddrs,
-      value: amount,
-      nonce: ownerNonce,
-      deadline,
-    };
+      it("Rejects expired permit deadline", async () => {
+        const {
+          accounts: { initialHolder, spender },
+          erc20Bridged,
+          domain,
+        } = context;
 
-    const signature = await erc1271WalletOwner._signTypedData(
-      domain,
-      types,
-      value
-    );
-    const r = signature.slice(0, 66);
-    const s = "0x" + signature.slice(66, 130);
-    const v = "0x" + signature.slice(130, 132);
+        const ownerAddr = initialHolder.address;
+        const spenderAddrs = spender.address;
+        const amount = ethers.utils.parseEther("1");
+        const ownerNonce = 1;
+        const deadline = Math.floor(Date.now() / 1000) - 604_800; // 1 week = 604_800 s
 
-    const permitTx = await erc20Bridged.permit(
-      ownerAddr,
-      spenderAddrs,
-      amount,
-      deadline,
-      v,
-      r,
-      s
-    );
-    await permitTx.wait();
+        const value = {
+          owner: ownerAddr,
+          spender: spenderAddrs,
+          value: amount,
+          nonce: ownerNonce,
+          deadline,
+        };
 
-    assert.deepEqual(
-      await erc20Bridged.nonces(ownerAddr),
-      BigNumber.from(1),
-      "Incorrect owner nonce"
-    );
+        const signature = await initialHolder._signTypedData(
+          domain,
+          types,
+          value
+        );
+        const r = signature.slice(0, 66);
+        const s = "0x" + signature.slice(66, 130);
+        const v = "0x" + signature.slice(130, 132);
 
-    assert.deepEqual(
-      await erc20Bridged.allowance(ownerAddr, spenderAddrs),
-      amount,
-      "Incorrect spender allowance"
-    );
-  });
+        await expect(
+          erc20Bridged.permit(
+            ownerAddr,
+            spenderAddrs,
+            amount,
+            deadline,
+            v,
+            r,
+            s
+          )
+        ).to.be.revertedWithCustomError(
+          erc20Bridged,
+          "ERC2612ExpiredSignature"
+        );
+      });
+    });
 
-  it("permit() :: ERC1271Wallet :: rejects reused signature", async () => {
-    const {
-      accounts: { spender, erc1271WalletOwner },
-      erc20Bridged,
-      erc1271Wallet,
-      domain,
-    } = context;
+    describe("*** ERC1271Wallet ***", async () => {
+      it(">>> Works as expected", async () => {
+        const {
+          accounts: { spender, erc1271WalletOwner },
+          erc20Bridged,
+          erc1271Wallet,
+          domain,
+        } = context;
 
-    const ownerAddr = erc1271Wallet.address;
-    const spenderAddrs = spender.address;
-    const amount = ethers.utils.parseEther("1");
-    const ownerNonce = 0;
-    const deadline = ethers.constants.MaxUint256;
+        const ownerAddr = erc1271Wallet.address;
+        const spenderAddrs = spender.address;
+        const amount = ethers.utils.parseEther("1");
+        const ownerNonce = 0;
+        const deadline = ethers.constants.MaxUint256;
 
-    const value = {
-      owner: ownerAddr,
-      spender: spenderAddrs,
-      value: amount,
-      nonce: ownerNonce,
-      deadline,
-    };
+        const value = {
+          owner: ownerAddr,
+          spender: spenderAddrs,
+          value: amount,
+          nonce: ownerNonce,
+          deadline,
+        };
 
-    const signature = await erc1271WalletOwner._signTypedData(
-      domain,
-      types,
-      value
-    );
-    const r = signature.slice(0, 66);
-    const s = "0x" + signature.slice(66, 130);
-    const v = "0x" + signature.slice(130, 132);
+        const signature = await erc1271WalletOwner._signTypedData(
+          domain,
+          types,
+          value
+        );
+        const r = signature.slice(0, 66);
+        const s = "0x" + signature.slice(66, 130);
+        const v = "0x" + signature.slice(130, 132);
 
-    await expect(
-      erc20Bridged.permit(ownerAddr, spenderAddrs, amount, deadline, v, r, s)
-    ).to.be.revertedWith("ERC20Permit: invalid signature");
-  });
+        const permitTx = await erc20Bridged.permit(
+          ownerAddr,
+          spenderAddrs,
+          amount,
+          deadline,
+          v,
+          r,
+          s
+        );
+        await permitTx.wait();
 
-  it("permit() :: ERC1271Wallet :: rejects invalid signer", async () => {
-    const {
-      accounts: { spender, deployerWallet: invalidSigner },
-      erc20Bridged,
-      erc1271Wallet,
-      domain,
-    } = context;
+        assert.isTrue(
+          (await erc20Bridged.nonces(ownerAddr)).eq(1),
+          "Incorrect owner nonce"
+        );
 
-    const ownerAddr = erc1271Wallet.address;
-    const spenderAddrs = spender.address;
-    const amount = ethers.utils.parseEther("1");
-    const ownerNonce = 1;
-    const deadline = ethers.constants.MaxUint256;
+        assert.isTrue(
+          (await erc20Bridged.allowance(ownerAddr, spenderAddrs)).eq(amount),
+          "Incorrect spender allowance"
+        );
+      });
 
-    const value = {
-      owner: ownerAddr,
-      spender: spenderAddrs,
-      value: amount,
-      nonce: ownerNonce,
-      deadline,
-    };
+      it("Rejects reused signature", async () => {
+        const {
+          accounts: { spender, erc1271WalletOwner },
+          erc20Bridged,
+          erc1271Wallet,
+          domain,
+        } = context;
 
-    const signature = await invalidSigner._signTypedData(domain, types, value);
-    const r = signature.slice(0, 66);
-    const s = "0x" + signature.slice(66, 130);
-    const v = "0x" + signature.slice(130, 132);
+        const ownerAddr = erc1271Wallet.address;
+        const spenderAddrs = spender.address;
+        const amount = ethers.utils.parseEther("1");
+        const ownerNonce = 0;
+        const deadline = ethers.constants.MaxUint256;
 
-    await expect(
-      erc20Bridged.permit(ownerAddr, spenderAddrs, amount, deadline, v, r, s)
-    ).to.be.revertedWith("ERC20Permit: invalid signature");
-  });
+        const value = {
+          owner: ownerAddr,
+          spender: spenderAddrs,
+          value: amount,
+          nonce: ownerNonce,
+          deadline,
+        };
 
-  it("permit() :: ERC1271Wallet :: rejects expired permit deadline", async () => {
-    const {
-      accounts: { spender, erc1271WalletOwner },
-      erc20Bridged,
-      erc1271Wallet,
-      domain,
-    } = context;
+        const signature = await erc1271WalletOwner._signTypedData(
+          domain,
+          types,
+          value
+        );
+        const r = signature.slice(0, 66);
+        const s = "0x" + signature.slice(66, 130);
+        const v = "0x" + signature.slice(130, 132);
 
-    const ownerAddr = erc1271Wallet.address;
-    const spenderAddrs = spender.address;
-    const amount = ethers.utils.parseEther("1");
-    const ownerNonce = 1;
-    const deadline = Math.floor(Date.now() / 1000) - 604_800; // 1 week = 604_800 s
+        await expect(
+          erc20Bridged.permit(
+            ownerAddr,
+            spenderAddrs,
+            amount,
+            deadline,
+            v,
+            r,
+            s
+          )
+        ).to.be.revertedWith("ERC20Permit: invalid signature");
+      });
 
-    const value = {
-      owner: ownerAddr,
-      spender: spenderAddrs,
-      value: amount,
-      nonce: ownerNonce,
-      deadline,
-    };
+      it("Rejects invalid signer", async () => {
+        const {
+          accounts: { spender, deployerWallet: invalidSigner },
+          erc20Bridged,
+          erc1271Wallet,
+          domain,
+        } = context;
 
-    const signature = await erc1271WalletOwner._signTypedData(
-      domain,
-      types,
-      value
-    );
-    const r = signature.slice(0, 66);
-    const s = "0x" + signature.slice(66, 130);
-    const v = "0x" + signature.slice(130, 132);
+        const ownerAddr = erc1271Wallet.address;
+        const spenderAddrs = spender.address;
+        const amount = ethers.utils.parseEther("1");
+        const ownerNonce = 1;
+        const deadline = ethers.constants.MaxUint256;
 
-    await expect(
-      erc20Bridged.permit(ownerAddr, spenderAddrs, amount, deadline, v, r, s)
-    ).to.be.revertedWithCustomError(erc20Bridged, "ERC2612ExpiredSignature");
+        const value = {
+          owner: ownerAddr,
+          spender: spenderAddrs,
+          value: amount,
+          nonce: ownerNonce,
+          deadline,
+        };
+
+        const signature = await invalidSigner._signTypedData(
+          domain,
+          types,
+          value
+        );
+        const r = signature.slice(0, 66);
+        const s = "0x" + signature.slice(66, 130);
+        const v = "0x" + signature.slice(130, 132);
+
+        await expect(
+          erc20Bridged.permit(
+            ownerAddr,
+            spenderAddrs,
+            amount,
+            deadline,
+            v,
+            r,
+            s
+          )
+        ).to.be.revertedWith("ERC20Permit: invalid signature");
+      });
+
+      it("Rejects expired permit deadline", async () => {
+        const {
+          accounts: { spender, erc1271WalletOwner },
+          erc20Bridged,
+          erc1271Wallet,
+          domain,
+        } = context;
+
+        const ownerAddr = erc1271Wallet.address;
+        const spenderAddrs = spender.address;
+        const amount = ethers.utils.parseEther("1");
+        const ownerNonce = 1;
+        const deadline = Math.floor(Date.now() / 1000) - 604_800; // 1 week = 604_800 s
+
+        const value = {
+          owner: ownerAddr,
+          spender: spenderAddrs,
+          value: amount,
+          nonce: ownerNonce,
+          deadline,
+        };
+
+        const signature = await erc1271WalletOwner._signTypedData(
+          domain,
+          types,
+          value
+        );
+        const r = signature.slice(0, 66);
+        const s = "0x" + signature.slice(66, 130);
+        const v = "0x" + signature.slice(130, 132);
+
+        await expect(
+          erc20Bridged.permit(
+            ownerAddr,
+            spenderAddrs,
+            amount,
+            deadline,
+            v,
+            r,
+            s
+          )
+        ).to.be.revertedWithCustomError(
+          erc20Bridged,
+          "ERC2612ExpiredSignature"
+        );
+      });
+    });
   });
 });
+
+const freezeAddress = async (
+  erc20: ethers.Contract,
+  freezer: Wallet,
+  toFreeze: Wallet
+) => {
+  const freezeTx = await erc20.connect(freezer).freezeAddress(toFreeze.address);
+  await freezeTx.wait();
+
+  assert.deepEqual(
+    await erc20.isFrozen(toFreeze.address),
+    true,
+    "Address was not frozen"
+  );
+};
+
+const unfreezeAddress = async (
+  erc20: ethers.Contract,
+  freezer: Wallet,
+  toFreeze: Wallet
+) => {
+  const freezeTx = await erc20
+    .connect(freezer)
+    .unfreezeAddress(toFreeze.address);
+  await freezeTx.wait();
+
+  assert.deepEqual(
+    await erc20.isFrozen(toFreeze.address),
+    false,
+    "Address was not unfrozen"
+  );
+};
+
+const freezeAndBurn = async (
+  erc20: ethers.Contract,
+  admin: Wallet,
+  escrow: Wallet,
+  toFreezeAndBurn: Wallet
+) => {
+  const freezeTx = await erc20
+    .connect(admin)
+    .freezeAddress(toFreezeAndBurn.address);
+  await freezeTx.wait();
+
+  assert.deepEqual(
+    await erc20.isFrozen(toFreezeAndBurn.address),
+    true,
+    "Address was not frozen"
+  );
+
+  const escrowBalanceBeforeBurn = await erc20.balanceOf(escrow.address);
+  const userBalanceBeforeBurn = await erc20.balanceOf(toFreezeAndBurn.address);
+
+  const burnTx = await erc20
+    .connect(admin)
+    .burnFrozenTokensEscrow(toFreezeAndBurn.address, escrow.address);
+  await burnTx.wait();
+
+  // User balance should be 0
+  assert.isTrue(
+    (await erc20.balanceOf(toFreezeAndBurn.address)).eq(0),
+    "Tokens were not burned from ToFreezeAndBurn"
+  );
+
+  // Escrow balance should increase by the burned token amount
+  assert.isTrue(
+    (await erc20.balanceOf(escrow.address)).eq(
+      escrowBalanceBeforeBurn.add(userBalanceBeforeBurn)
+    ),
+    "Tokens were not burned to Escrow"
+  );
+};

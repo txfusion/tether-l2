@@ -2,7 +2,7 @@ import { run as hardhatRun } from "hardhat";
 import "@nomiclabs/hardhat-ethers";
 import { Signer, Wallet, providers } from "ethers";
 import { getAddressFromEnv } from "./utils/utils";
-import { IZkSyncFactory } from "zksync-web3/build/typechain";
+import { IZkSyncFactory } from "zksync-ethers/build/typechain";
 import { L1ERC20Bridge__factory } from "../typechain/factories/l1/contracts/L1ERC20Bridge__factory";
 
 export const IS_PRODUCTION = (process.env.NODE_ENV as string) === "prod";

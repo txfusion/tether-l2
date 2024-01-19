@@ -66,4 +66,11 @@ interface IL2ERC20Bridge {
 
     /// @notice Returns the address of the corresponding L1 bridge contract
     function l1Bridge() external view returns (address);
+
+    function initialize(
+        address _l1TokenBridge,
+        address _l1Token,
+        address _l2Token,
+        address _admin
+    ) external;
 }
