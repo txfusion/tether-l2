@@ -8,12 +8,6 @@ pragma solidity ^0.8.13;
 /// @notice Proxies
 import "../../common/proxy/OssifiableProxy.sol";
 
-/// @notice Interfaces
-import "../../common/interfaces/IERC20Bridged.sol";
-import "../../common/interfaces/IL1ERC20Bridge.sol";
-import "../../common/interfaces/IL2ERC20Bridge.sol";
-import "../../common/interfaces/IERC20FreezeManager.sol";
-
 /// @notice Stubs
 import "../../common/stubs/EmptyContractStub.sol";
 import "../../common/stubs/ERC20BridgedStub.sol";
