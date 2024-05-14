@@ -16,14 +16,14 @@ const L2_RPC_URL = process.env.ZKSYNC_PROVIDER_URL as string;
 
 const config: HardhatUserConfig = {
   zksolc: {
-    version: "1.3.13",
+    version: "1.4.1",
     compilerSource: "binary",
     settings: {
       isSystem: true,
     },
   },
   solidity: {
-    version: "0.8.13",
+    version: "0.8.24",
     settings: {
       optimizer: {
         enabled: true,
