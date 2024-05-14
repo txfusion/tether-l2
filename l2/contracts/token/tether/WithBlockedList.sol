@@ -14,16 +14,40 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 */
 
 contract WithBlockedList is OwnableUpgradeable {
+    ////////////////////////////
+    //    State Variables     //
+    ///////////////////////////
+    mapping(address => bool) public isBlocked;
+
+    ///////////////////
+    //    Events     //
+    //////////////////
+    event BlockPlaced(address indexed _user);
+    event BlockReleased(address indexed _user);
+
+    //////////////////////
+    //    Modifiers     //
+    /////////////////////
     /**
-     * @dev Reverts if called by a blocked account
+     * @notice Checks if the msg.sender has been blocked.
      */
     modifier onlyNotBlocked() {
         require(!isBlocked[_msgSender()], "Blocked: msg.sender is blocked");
         _;
     }
 
-    mapping(address => bool) public isBlocked;
+    /**
+     * @notice Checks if the specified account has been blocked.
+     * @param account_ Account to check
+     */
+    modifier onlyNotBlockedAccount(address account_) {
+        require(!isBlocked[account_], "Blocked: account is blocked");
+        _;
+    }
 
+    //////////////////////////////////////
+    //    Public/External Functions     //
+    /////////////////////////////////////
     function addToBlockedList(address _user) public onlyOwner {
         isBlocked[_user] = true;
         emit BlockPlaced(_user);
@@ -33,8 +57,4 @@ contract WithBlockedList is OwnableUpgradeable {
         isBlocked[_user] = false;
         emit BlockReleased(_user);
     }
-
-    event BlockPlaced(address indexed _user);
-
-    event BlockReleased(address indexed _user);
 }

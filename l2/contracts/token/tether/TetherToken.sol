@@ -17,18 +17,31 @@ import "./WithBlockedList.sol";
 */
 
 contract TetherToken is Initializable, ERC20PermitUpgradeable, OwnableUpgradeable, WithBlockedList {
+    ////////////////////////////
+    //    Storage Variables   //
+    ///////////////////////////
     // Unused variable retained to preserve storage slots across upgrades
     mapping(address => bool) public isTrusted;
 
     uint8 private tetherDecimals;
 
-    function initialize(string memory _name, string memory _symbol, uint8 _decimals) public initializer {
+    /////////////////
+    //    Events   //
+    ////////////////
+    event Mint(address indexed _destination, uint256 _amount);
+    event Redeem(uint256 _amount);
+    event DestroyedBlockedFunds(address indexed _blockedUser, uint256 _balance);
+
+    function __TetherToken__init(string memory _name, string memory _symbol, uint8 _decimals) public onlyInitializing {
         tetherDecimals = _decimals;
         __Ownable_init();
         __ERC20_init(_name, _symbol);
         __ERC20Permit_init(_name);
     }
 
+    /////////////////////////////////////
+    //    Public/External Functions    //
+    ////////////////////////////////////
     function decimals() public view virtual override returns (uint8) {
         return tetherDecimals;
     }
@@ -71,8 +84,4 @@ contract TetherToken is Initializable, ERC20PermitUpgradeable, OwnableUpgradeabl
         _burn(_blockedUser, blockedFunds);
         emit DestroyedBlockedFunds(_blockedUser, blockedFunds);
     }
-
-    event Mint(address indexed _destination, uint256 _amount);
-    event Redeem(uint256 _amount);
-    event DestroyedBlockedFunds(address indexed _blockedUser, uint256 _balance);
 }
