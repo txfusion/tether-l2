@@ -27,54 +27,83 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
     context = await setup();
   });
 
-  describe("=== Freeze ===", async () => {
-    const AMOUNT = 1;
-
-    it("Non-admins cannot freeze", async () => {
+  describe("=== Blacklist ===", async () => {
+    it("Non-owners cannot blacklist", async () => {
       const {
-        accounts: { initialHolder, governor },
+        accounts: { initialHolder, spender },
         erc20Bridged,
-        roles: { ADDRESS_FREEZER_ROLE },
       } = context;
 
       await expect(
-        erc20Bridged.connect(initialHolder).freezeAddress(governor.address)
-      ).to.be.revertedWith(
-        `AccessControl: account ${initialHolder.address.toLowerCase()} is missing role ${ADDRESS_FREEZER_ROLE}`
-      );
+        erc20Bridged.connect(initialHolder).addToBlocklist(spender.address)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
     });
 
-    it("Admins can freeze", async () => {
+    it("Admins can blacklist", async () => {
       const {
-        accounts: { initialHolder, governor },
+        accounts: { initialHolder, admin },
         erc20Bridged,
       } = context;
 
-      await freezeAddress(erc20Bridged, governor, initialHolder);
+      await addToBlocklist(erc20Bridged, admin, initialHolder);
+    });
+
+    describe("=== Destroy blocked funds ===", async () => {
+      it("Non-admins cannot destroy", async () => {
+        const {
+          accounts: { initialHolder, admin },
+          erc20Bridged,
+        } = context;
+
+        await expect(
+          erc20Bridged.connect(initialHolder).destroyBlockedFunds(admin.address)
+        ).to.be.revertedWith(`Ownable: caller is not the owner`);
+      });
+
+      it("Admins cannot burn unblocked accounts", async () => {
+        const {
+          accounts: { initialHolder, admin },
+          erc20Bridged,
+        } = context;
+        expect(
+          await erc20Bridged
+            .connect(admin)
+            .destroyBlockedFunds(initialHolder.address)
+        ).to.be.revertedWith("TetherToken: user is not blocked");
+      });
+
+      it("Admins can burn frozen accounts", async () => {
+        const {
+          accounts: { initialHolder, admin },
+          erc20Bridged,
+        } = context;
+
+        await blockAnddestroyBlockedFunds(erc20Bridged, admin, initialHolder);
+      });
     });
 
     describe("*** Transfer ***", async () => {
       it("Frozen address cannot use transfer()", async () => {
         const {
-          accounts: { initialHolder, governor },
+          accounts: { initialHolder, admin },
           erc20Bridged,
         } = context;
 
-        await freezeAddress(erc20Bridged, governor, initialHolder);
+        await addToBlocklist(erc20Bridged, admin, initialHolder);
 
         await expect(
-          erc20Bridged.connect(initialHolder).transfer(governor.address, AMOUNT)
+          erc20Bridged.connect(initialHolder).transfer(admin.address, AMOUNT)
         ).to.be.revertedWithCustomError(erc20Bridged, "OnlyNotFrozenAddress");
       });
 
       it("Unfrozen address cannot use transfer() to frozen address", async () => {
         const {
-          accounts: { initialHolder, spender, governor },
+          accounts: { initialHolder, spender, admin },
           erc20Bridged,
         } = context;
 
-        await unfreezeAddress(erc20Bridged, governor, initialHolder);
-        await freezeAddress(erc20Bridged, governor, spender);
+        await removeFromBlocklist(erc20Bridged, admin, initialHolder);
+        await addToBlocklist(erc20Bridged, admin, spender);
 
         await expect(
           erc20Bridged.connect(initialHolder).transfer(spender.address, AMOUNT)
@@ -83,152 +112,80 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
 
       it("Unfrozen address can use transfer() to unfrozen address", async () => {
         const {
-          accounts: { initialHolder, governor },
+          accounts: { initialHolder, admin },
           erc20Bridged,
         } = context;
 
-        await unfreezeAddress(erc20Bridged, governor, initialHolder);
+        await removeFromBlocklist(erc20Bridged, admin, initialHolder);
 
         const transferTx = await erc20Bridged
           .connect(initialHolder)
-          .transfer(governor.address, AMOUNT);
+          .transfer(admin.address, AMOUNT);
         await transferTx.wait();
 
-        expect(await erc20Bridged.balanceOf(governor.address)).to.be.equal(
-          AMOUNT
-        );
+        expect(await erc20Bridged.balanceOf(admin.address)).to.be.equal(AMOUNT);
       });
     });
 
     describe("*** Transfer From ***", async () => {
       it("Frozen address cannot use transferFrom()", async () => {
         const {
-          accounts: { initialHolder, governor },
+          accounts: { initialHolder, admin },
           erc20Bridged,
         } = context;
 
-        await freezeAddress(erc20Bridged, governor, initialHolder);
+        await addToBlocklist(erc20Bridged, admin, initialHolder);
 
         await expect(
           erc20Bridged
             .connect(initialHolder)
-            .transferFrom(initialHolder.address, governor.address, AMOUNT)
+            .transferFrom(initialHolder.address, admin.address, AMOUNT)
         ).to.be.revertedWithCustomError(erc20Bridged, "OnlyNotFrozenAddress");
       });
 
       it("Unfrozen address cannot use transferFrom() to frozen address", async () => {
         const {
-          accounts: { initialHolder, spender, governor },
+          accounts: { initialHolder, spender, admin },
           erc20Bridged,
         } = context;
 
-        await unfreezeAddress(erc20Bridged, governor, initialHolder);
-        await freezeAddress(erc20Bridged, governor, spender);
+        await removeFromBlocklist(erc20Bridged, admin, initialHolder);
+        await addToBlocklist(erc20Bridged, admin, spender);
 
         const allowTx = await erc20Bridged
           .connect(initialHolder)
-          .increaseAllowance(governor.address, AMOUNT);
+          .increaseAllowance(admin.address, AMOUNT);
         await allowTx.wait();
 
         await expect(
           erc20Bridged
-            .connect(governor)
+            .connect(admin)
             .transferFrom(initialHolder.address, spender.address, AMOUNT)
         ).to.be.revertedWithCustomError(erc20Bridged, "OnlyNotFrozenAddress");
       });
 
       it("Unfrozen address can use transferFrom() to unfrozen address", async () => {
         const {
-          accounts: { initialHolder, governor },
+          accounts: { initialHolder, admin },
           erc20Bridged,
         } = context;
 
-        await unfreezeAddress(erc20Bridged, governor, initialHolder);
+        await removeFromBlocklist(erc20Bridged, admin, initialHolder);
 
         const allowTx = await erc20Bridged
           .connect(initialHolder)
-          .increaseAllowance(governor.address, AMOUNT);
+          .increaseAllowance(admin.address, AMOUNT);
         await allowTx.wait();
 
         const transferTx = await erc20Bridged
-          .connect(governor)
-          .transferFrom(initialHolder.address, governor.address, AMOUNT);
+          .connect(admin)
+          .transferFrom(initialHolder.address, admin.address, AMOUNT);
         await transferTx.wait();
 
-        expect(await erc20Bridged.balanceOf(governor.address)).to.be.equal(
+        expect(await erc20Bridged.balanceOf(admin.address)).to.be.equal(
           AMOUNT * 2
         ); // AMOUNT * 2 because of the previous "transfer" test
       });
-    });
-  });
-
-  describe("=== Burn ===", async () => {
-    it("Non-admins cannot burn", async () => {
-      const {
-        accounts: { initialHolder, governor },
-        erc20Bridged,
-        roles: { ADDRESS_BURNER_ROLE },
-      } = context;
-
-      await expect(
-        erc20Bridged.connect(initialHolder).burnFrozenTokens(governor.address)
-      ).to.be.revertedWith(
-        `AccessControl: account ${initialHolder.address.toLowerCase()} is missing role ${ADDRESS_BURNER_ROLE}`
-      );
-    });
-
-    it("Admins cannot burn unfrozen accounts", async () => {
-      const {
-        accounts: { initialHolder, governor },
-        erc20Bridged,
-      } = context;
-
-      await freezeAddress(erc20Bridged, governor, initialHolder);
-
-      expect(
-        await erc20Bridged
-          .connect(governor)
-          .burnFrozenTokens(initialHolder.address)
-      ).to.be.revertedWithCustomError(erc20Bridged, "OnlyFrozenAddress");
-    });
-
-    it("Admins cannot burn unfrozen accounts and re-mint to 0x0", async () => {
-      const {
-        accounts: { initialHolder, governor },
-        erc20Bridged,
-      } = context;
-
-      await freezeAddress(erc20Bridged, governor, initialHolder);
-
-      await expect(
-        erc20Bridged
-          .connect(governor)
-          .burnFrozenTokensEscrow(
-            initialHolder.address,
-            ethers.constants.AddressZero
-          )
-      ).to.be.revertedWithCustomError(
-        erc20Bridged,
-        "ErrorAccountIsZeroAddress"
-      );
-    });
-
-    it("Admins can burn frozen accounts", async () => {
-      const {
-        accounts: { initialHolder, governor },
-        erc20Bridged,
-      } = context;
-
-      await freezeAndBurn(erc20Bridged, governor, governor, initialHolder);
-    });
-
-    it("Admins can burn frozen accounts and re-mint to escrow", async () => {
-      const {
-        accounts: { initialHolder, governor, spender },
-        erc20Bridged,
-      } = context;
-
-      await freezeAndBurn(erc20Bridged, governor, spender, initialHolder);
     });
   });
 
@@ -638,74 +595,55 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
   });
 });
 
-const freezeAddress = async (
-  erc20: ethers.Contract,
-  freezer: Wallet,
-  toFreeze: Wallet
-) => {
-  const freezeTx = await erc20.connect(freezer).freezeAddress(toFreeze.address);
-  await freezeTx.wait();
-
-  assert.deepEqual(
-    await erc20.isFrozen(toFreeze.address),
-    true,
-    "Address was not frozen"
-  );
-};
-
-const unfreezeAddress = async (
-  erc20: ethers.Contract,
-  freezer: Wallet,
-  toFreeze: Wallet
-) => {
-  const freezeTx = await erc20
-    .connect(freezer)
-    .unfreezeAddress(toFreeze.address);
-  await freezeTx.wait();
-
-  assert.deepEqual(
-    await erc20.isFrozen(toFreeze.address),
-    false,
-    "Address was not unfrozen"
-  );
-};
-
-const freezeAndBurn = async (
+const addToBlocklist = async (
   erc20: ethers.Contract,
   admin: Wallet,
-  escrow: Wallet,
-  toFreezeAndBurn: Wallet
+  toBlocklist: Wallet
 ) => {
   const freezeTx = await erc20
     .connect(admin)
-    .freezeAddress(toFreezeAndBurn.address);
+    .addToBlocklist(toBlocklist.address);
   await freezeTx.wait();
 
   assert.deepEqual(
-    await erc20.isFrozen(toFreezeAndBurn.address),
+    await erc20.isBlocked(toBlocklist.address),
     true,
-    "Address was not frozen"
+    "Address was not added to the blocklist"
   );
+};
 
-  const escrowBalanceBeforeBurn = await erc20.balanceOf(escrow.address);
-  const userBalanceBeforeBurn = await erc20.balanceOf(toFreezeAndBurn.address);
+const removeFromBlocklist = async (
+  erc20: ethers.Contract,
+  admin: Wallet,
+  toBlocklist: Wallet
+) => {
+  const freezeTx = await erc20
+    .connect(admin)
+    .removeFromBlocklist(toBlocklist.address);
+  await freezeTx.wait();
+
+  assert.deepEqual(
+    await erc20.isBlocked(toBlocklist.address),
+    false,
+    "Address was not removed from the blocklist"
+  );
+};
+
+const blockAnddestroyBlockedFunds = async (
+  erc20: ethers.Contract,
+  admin: Wallet,
+  toDestroy: Wallet
+) => {
+  await addToBlocklist(erc20, admin, toDestroy);
 
   const burnTx = await erc20
     .connect(admin)
-    .burnFrozenTokensEscrow(toFreezeAndBurn.address, escrow.address);
+    .blockAnddestroyBlockedFunds(toDestroy.address);
   await burnTx.wait();
 
   // User balance should be 0
   assert.isTrue(
-    (await erc20.balanceOf(toFreezeAndBurn.address)).eq(0),
-    "Tokens were not burned from ToFreezeAndBurn"
-  );
-
-  // Escrow balance should increase by the burned token amount
-  assert.isTrue(
-    (await erc20.balanceOf(escrow.address)).eq(
-      escrowBalanceBeforeBurn.add(userBalanceBeforeBurn)
-    ),
-    "Tokens were not burned to Escrow"
+    (await erc20.balanceOf(toDestroy.address)).eq(0),
+    "Tokens were not destroyed"
   );
 };

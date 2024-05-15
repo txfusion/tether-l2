@@ -8,7 +8,7 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 
 import "./tether/TetherTokenV2.sol";
 
-contract TetherZkSync is TetherTokenV2, Initializable, AccessControlUpgradeable {
+contract TetherZkSync is Initializable, TetherTokenV2, AccessControlUpgradeable {
     ///////////////////
     //    Errors     //
     //////////////////
@@ -68,11 +68,7 @@ contract TetherZkSync is TetherTokenV2, Initializable, AccessControlUpgradeable 
     ////////////////////////////////////////
     //     Private/Internal Functions     //
     ////////////////////////////////////////
-    function _setBridge(address newBridge_) private {
-        if (newBridge_ == address(0)) {
-            revert TetherZkSync__InvalidBridgeAddress();
-        }
-
+    function _setBridge(address newBridge_) internal {
         address _oldBridge = bridge;
         if (_oldBridge != address(0)) {
             _revokeRole(BRIDGE_ROLE, _oldBridge);

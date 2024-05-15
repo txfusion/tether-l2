@@ -13,7 +13,7 @@ abstract contract EIP3009Upgradeable is Initializable, EIP712Upgradeable {
     /////////////////
     error EIP3009Upgradeable__ErrorUnauthorized();
     error EIP3009Upgradeable__ErrorInvalidSignature();
-    error EIP3009Upgradeable__ErrorNonceAlreadyUsed(uint256 nonce);
+    error EIP3009Upgradeable__ErrorNonceAlreadyUsed(bytes32 nonce);
     error EIP3009Upgradeable__ErrorAuthEarly();
     error EIP3009Upgradeable__ErrorAuthExpired();
 
@@ -93,7 +93,7 @@ abstract contract EIP3009Upgradeable is Initializable, EIP712Upgradeable {
      * @dev See {IERC20Permit-DOMAIN_SEPARATOR}.
      */
     // solhint-disable-next-line func-name-mixedcase
-    function domainSeparator() external view virtual returns (bytes32) {
+    function domainSeparator() public view virtual returns (bytes32) {
         return _domainSeparatorV4();
     }
 
@@ -187,7 +187,7 @@ abstract contract EIP3009Upgradeable is Initializable, EIP712Upgradeable {
      * @param dataHash      Hash of encoded data struct
      * @param signature signature in bytes
      */
-    function _requireValidSignature(address signer, bytes32 dataHash, bytes memory signature) private view {
+    function _requireValidSignature(address signer, bytes32 dataHash, bytes memory signature) internal view {
         if (
             !SignatureChecker.isValidSignatureNow(
                 signer, MessageHashUtils.toTypedDataHash(domainSeparator(), dataHash), signature
@@ -202,7 +202,7 @@ abstract contract EIP3009Upgradeable is Initializable, EIP712Upgradeable {
      * @param authorizer    Authorizer's address
      * @param nonce         Nonce of the authorization
      */
-    function _requireUnusedAuthorization(address authorizer, bytes32 nonce) private view {
+    function _requireUnusedAuthorization(address authorizer, bytes32 nonce) internal view {
         if (_authorizationStates[authorizer][nonce]) {
             revert EIP3009Upgradeable__ErrorNonceAlreadyUsed(nonce);
         }
@@ -216,7 +216,7 @@ abstract contract EIP3009Upgradeable is Initializable, EIP712Upgradeable {
      * @param validBefore   The time before which this is valid (unix time)
      */
     function _requireValidAuthorization(address authorizer, bytes32 nonce, uint256 validAfter, uint256 validBefore)
-        private
+        internal
         view
     {
         if (block.timestamp < validAfter) {
@@ -233,7 +233,7 @@ abstract contract EIP3009Upgradeable is Initializable, EIP712Upgradeable {
      * @param authorizer    Authorizer's address
      * @param nonce         Nonce of the authorization
      */
-    function _markAuthorizationAsUsed(address authorizer, bytes32 nonce) private {
+    function _markAuthorizationAsUsed(address authorizer, bytes32 nonce) internal {
         _authorizationStates[authorizer][nonce] = true;
         emit EIP3009Upgradeable__AuthorizationUsed(authorizer, nonce);
     }
@@ -243,7 +243,7 @@ abstract contract EIP3009Upgradeable is Initializable, EIP712Upgradeable {
      * @param authorizer    Authorizer's address
      * @param nonce         Nonce of the authorization
      */
-    function _markAuthorizationAsCancelled(address authorizer, bytes32 nonce) private {
+    function _markAuthorizationAsCancelled(address authorizer, bytes32 nonce) internal {
         _authorizationStates[authorizer][nonce] = true;
         emit EIP3009Upgradeable__AuthorizationCanceled(authorizer, nonce);
     }

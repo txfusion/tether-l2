@@ -165,7 +165,7 @@ contract TetherTokenV2 is TetherToken, EIP3009Upgradeable {
 
         _requireValidSignature(
             owner_,
-            keccak256(abi.encode(_PERMIT_TYPEHASH, owner_, spender, value, _useNonce(owner_), deadline)),
+            keccak256(abi.encode(PERMIT_TYPEHASH, owner_, spender, value, _useNonce(owner_), deadline)),
             signature
         );
 
