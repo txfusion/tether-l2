@@ -283,7 +283,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
         const ownerAddr = initialHolder.address;
         const spenderAddr = spender.address;
         const amount = ethers.utils.parseEther("1");
-        const ownerNonce = 0;
+        const ownerNonce = await erc20Bridged.nonces(ownerAddr);
         const deadline = ethers.constants.MaxUint256;
 
         const { type, data } = getEIP712Operation(EIP712Operations.PERMIT, {
@@ -319,7 +319,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
         const ownerAddr = initialHolder.address;
         const spenderAddr = spender.address;
         const amount = ethers.utils.parseEther("1");
-        const ownerNonce = 0;
+        const ownerNonce = await erc20Bridged.nonces(ownerAddr);
         const deadline = BigNumber.from(0);
 
         const { type, data } = getEIP712Operation(EIP712Operations.PERMIT, {
@@ -361,7 +361,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
           owner: initialHolder.address,
           spender: spender.address,
           value: DEFAULT_AMOUNT,
-          nonce: 0,
+          nonce: await erc20Bridged.nonces(initialHolder.address),
           deadline: deadline,
         });
         const signature = await signTypedData(
@@ -474,7 +474,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
         const ownerAddr = erc1271Wallet.address;
         const spenderAddr = spender.address;
         const amount = ethers.utils.parseEther("1");
-        const ownerNonce = 0;
+        const ownerNonce = await erc20Bridged.nonces(ownerAddr);
         const deadline = ethers.constants.MaxUint256;
 
         const { type, data } = getEIP712Operation(EIP712Operations.PERMIT, {
@@ -511,7 +511,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
         const ownerAddr = erc1271Wallet.address;
         const spenderAddr = spender.address;
         const amount = ethers.utils.parseEther("1");
-        const ownerNonce = 0;
+        const ownerNonce = await erc20Bridged.nonces(ownerAddr);
         const deadline = BigNumber.from(0);
 
         const { type, data } = getEIP712Operation(EIP712Operations.PERMIT, {
@@ -554,7 +554,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
           owner: erc1271Wallet.address,
           spender: spender.address,
           value: DEFAULT_AMOUNT,
-          nonce: 0,
+          nonce: await erc20Bridged.nonces(erc1271WalletOwner.address),
           deadline: deadline,
         });
         const signature = await signTypedData(
@@ -583,7 +583,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
         ).wait();
 
         assert.isTrue(
-          (await erc20Bridged.nonces(erc1271WalletOwner.address)).eq(0),
+          (await erc20Bridged.nonces(erc1271Wallet.address)).eq(1),
           "Incorrect owner nonce"
         );
 
@@ -628,7 +628,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
     });
   });
 
-  describe.only("=== Transfer with Authorization ===", async () => {
+  describe("=== Transfer with Authorization ===", async () => {
     describe("*** EOA ***", async () => {
       it("should revert if the signature's validAfter hasn't been reached", async () => {
         const {
@@ -1197,6 +1197,697 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
       });
     });
   });
+
+  describe("=== Receive with Authorization ===", async () => {
+    describe("*** EOA ***", async () => {
+      it("should revert if the receiver is not sending the transaction", async () => {
+        const {
+          accounts: { initialHolder, spender },
+          erc20Bridged,
+          domain,
+          DEFAULT_AMOUNT,
+        } = context;
+
+        const validAfter = 0;
+        const validBefore = ethers.constants.MaxUint256;
+        const fromNonce = ethers.BigNumber.from(
+          ethers.utils.randomBytes(32)
+        )._hex;
+
+        const { type, data } = getEIP712Operation(
+          EIP712Operations.RECEIVE_WITH_AUTHORIZATION,
+          {
+            from: initialHolder.address,
+            to: spender.address,
+            value: DEFAULT_AMOUNT,
+            validAfter,
+            validBefore,
+            nonce: fromNonce,
+          }
+        );
+        const signature = await signTypedData(
+          domain,
+          type,
+          data,
+          initialHolder
+        );
+
+        await expect(
+          erc20Bridged[
+            "receiveWithAuthorization(address,address,uint256,uint256,uint256,bytes32,bytes)"
+          ](
+            initialHolder.address,
+            spender.address,
+            DEFAULT_AMOUNT,
+            validAfter,
+            validBefore,
+            fromNonce,
+            signature
+          )
+        ).to.be.revertedWithCustomError(
+          erc20Bridged,
+          "EIP3009Upgradeable__ErrorUnauthorized"
+        );
+      });
+
+      it("should revert if the signature's validAfter hasn't been reached", async () => {
+        const {
+          accounts: { initialHolder, spender },
+          erc20Bridged,
+          domain,
+          DEFAULT_AMOUNT,
+        } = context;
+
+        const validAfter = ethers.constants.MaxUint256;
+        const validBefore = ethers.constants.MaxUint256;
+        const fromNonce = ethers.BigNumber.from(
+          ethers.utils.randomBytes(32)
+        )._hex;
+
+        const { type, data } = getEIP712Operation(
+          EIP712Operations.RECEIVE_WITH_AUTHORIZATION,
+          {
+            from: initialHolder.address,
+            to: spender.address,
+            value: DEFAULT_AMOUNT,
+            validAfter,
+            validBefore,
+            nonce: fromNonce,
+          }
+        );
+        const signature = await signTypedData(
+          domain,
+          type,
+          data,
+          initialHolder
+        );
+
+        await expect(
+          erc20Bridged
+            .connect(spender)
+            [
+              "receiveWithAuthorization(address,address,uint256,uint256,uint256,bytes32,bytes)"
+            ](
+              initialHolder.address,
+              spender.address,
+              DEFAULT_AMOUNT,
+              validAfter,
+              validBefore,
+              fromNonce,
+              signature
+            )
+        ).to.be.revertedWithCustomError(
+          erc20Bridged,
+          "EIP3009Upgradeable__ErrorAuthEarly"
+        );
+      });
+
+      it("should revert if the signature's validBefore has been exceeded", async () => {
+        const {
+          accounts: { initialHolder, spender },
+          erc20Bridged,
+          domain,
+          DEFAULT_AMOUNT,
+        } = context;
+
+        const validAfter = BigNumber.from(0);
+        const validBefore = validAfter;
+        const fromNonce = ethers.BigNumber.from(
+          ethers.utils.randomBytes(32)
+        )._hex;
+
+        const { type, data } = getEIP712Operation(
+          EIP712Operations.RECEIVE_WITH_AUTHORIZATION,
+          {
+            from: initialHolder.address,
+            to: spender.address,
+            value: DEFAULT_AMOUNT,
+            validAfter,
+            validBefore,
+            nonce: fromNonce,
+          }
+        );
+        const signature = await signTypedData(
+          domain,
+          type,
+          data,
+          initialHolder
+        );
+
+        await expect(
+          erc20Bridged
+            .connect(spender)
+            [
+              "receiveWithAuthorization(address,address,uint256,uint256,uint256,bytes32,bytes)"
+            ](
+              initialHolder.address,
+              spender.address,
+              DEFAULT_AMOUNT,
+              validAfter,
+              validBefore,
+              fromNonce,
+              signature
+            )
+        ).to.be.revertedWithCustomError(
+          erc20Bridged,
+          "EIP3009Upgradeable__ErrorAuthExpired"
+        );
+      });
+
+      it("should revert if the signature has already been used", async () => {
+        const {
+          accounts: { initialHolder, spender },
+          erc20Bridged,
+          domain,
+          DEFAULT_AMOUNT,
+        } = context;
+
+        const { nonce, validAfter, validBefore, signature } =
+          await validReceiveWithAuthorization(
+            initialHolder,
+            spender,
+            erc20Bridged,
+            domain,
+            DEFAULT_AMOUNT
+          );
+
+        await expect(
+          erc20Bridged
+            .connect(spender)
+            [
+              "receiveWithAuthorization(address,address,uint256,uint256,uint256,bytes32,bytes)"
+            ](
+              initialHolder.address,
+              spender.address,
+              DEFAULT_AMOUNT,
+              validAfter,
+              validBefore,
+              nonce,
+              signature
+            )
+        )
+          .to.be.revertedWithCustomError(
+            erc20Bridged,
+            "EIP3009Upgradeable__ErrorNonceAlreadyUsed"
+          )
+          .withArgs(nonce);
+      });
+
+      it("should revert if the signature has been signed by someone else other than the owner", async () => {
+        const {
+          accounts: { initialHolder, spender },
+          erc20Bridged,
+          domain,
+          DEFAULT_AMOUNT,
+        } = context;
+
+        const validAfter = 0;
+        const validBefore = ethers.constants.MaxUint256;
+        const fromNonce = ethers.BigNumber.from(
+          ethers.utils.randomBytes(32)
+        )._hex;
+
+        const { type, data } = getEIP712Operation(
+          EIP712Operations.RECEIVE_WITH_AUTHORIZATION,
+          {
+            from: initialHolder.address,
+            to: spender.address,
+            value: DEFAULT_AMOUNT,
+            validAfter,
+            validBefore,
+            nonce: fromNonce,
+          }
+        );
+        const signature = await signTypedData(domain, type, data, spender);
+
+        await expect(
+          erc20Bridged
+            .connect(spender)
+            [
+              "receiveWithAuthorization(address,address,uint256,uint256,uint256,bytes32,bytes)"
+            ](
+              initialHolder.address,
+              spender.address,
+              DEFAULT_AMOUNT,
+              validAfter,
+              validBefore,
+              fromNonce,
+              signature
+            )
+        ).to.be.revertedWithCustomError(
+          erc20Bridged,
+          "EIP3009Upgradeable__ErrorInvalidSignature"
+        );
+      });
+
+      it(">>> works as expected (using r,s,v)", async () => {
+        const {
+          accounts: { initialHolder, spender },
+          erc20Bridged,
+          domain,
+          DEFAULT_AMOUNT,
+        } = context;
+
+        assert.isTrue(
+          (await erc20Bridged.balanceOf(spender.address)).eq(BigNumber.from(0))
+        );
+
+        const validAfter = BigNumber.from(0);
+        const validBefore = ethers.constants.MaxUint256;
+        const fromNonce = ethers.BigNumber.from(
+          ethers.utils.randomBytes(32)
+        )._hex;
+
+        const { type, data } = getEIP712Operation(
+          EIP712Operations.RECEIVE_WITH_AUTHORIZATION,
+          {
+            from: initialHolder.address,
+            to: spender.address,
+            value: DEFAULT_AMOUNT,
+            validAfter,
+            validBefore,
+            nonce: fromNonce,
+          }
+        );
+        const signature = await signTypedData(
+          domain,
+          type,
+          data,
+          initialHolder
+        );
+
+        const r = signature.slice(0, 66);
+        const s = "0x" + signature.slice(66, 130);
+        const v = "0x" + signature.slice(130, 132);
+
+        const transferTx = await erc20Bridged
+          .connect(spender)
+          [
+            "receiveWithAuthorization(address,address,uint256,uint256,uint256,bytes32,uint8,bytes32,bytes32)"
+          ](
+            initialHolder.address,
+            spender.address,
+            DEFAULT_AMOUNT,
+            validAfter,
+            validBefore,
+            fromNonce,
+            v,
+            r,
+            s
+          );
+
+        expect(transferTx)
+          .to.emit(erc20Bridged, "EIP3009Upgradeable__AuthorizationUsed")
+          .withArgs(initialHolder.address, fromNonce)
+          .to.emit(erc20Bridged, "Transfer")
+          .withArgs(initialHolder.address, spender.address, DEFAULT_AMOUNT);
+
+        await transferTx.wait();
+
+        assert.isTrue(
+          (await erc20Bridged.balanceOf(spender.address)).eq(DEFAULT_AMOUNT),
+          "Incorrect spender balance"
+        );
+      });
+
+      it(">>> works as expected (using full signature)", async () => {
+        const {
+          accounts: { initialHolder, spender },
+          erc20Bridged,
+          domain,
+          DEFAULT_AMOUNT,
+        } = context;
+
+        assert.isTrue(
+          (await erc20Bridged.balanceOf(spender.address)).eq(BigNumber.from(0))
+        );
+
+        await validTransferWithAuthorization(
+          initialHolder,
+          spender,
+          erc20Bridged,
+          domain,
+          DEFAULT_AMOUNT
+        );
+
+        assert.isTrue(
+          (await erc20Bridged.balanceOf(spender.address)).eq(DEFAULT_AMOUNT),
+          "Incorrect spender balance"
+        );
+      });
+    });
+
+    describe("*** ERC1271Wallet ***", async () => {
+      it("should revert if the receiver is not sending the transaction", async () => {
+        const {
+          accounts: { erc1271WalletOwner, spender },
+          erc1271Wallet,
+          erc20Bridged,
+          domain,
+          DEFAULT_AMOUNT,
+        } = context;
+
+        const validAfter = 0;
+        const validBefore = ethers.constants.MaxUint256;
+        const fromNonce = ethers.BigNumber.from(
+          ethers.utils.randomBytes(32)
+        )._hex;
+
+        const { type, data } = getEIP712Operation(
+          EIP712Operations.RECEIVE_WITH_AUTHORIZATION,
+          {
+            from: erc1271Wallet.address,
+            to: spender.address,
+            value: DEFAULT_AMOUNT,
+            validAfter,
+            validBefore,
+            nonce: fromNonce,
+          }
+        );
+        const signature = await signTypedData(
+          domain,
+          type,
+          data,
+          erc1271WalletOwner
+        );
+
+        await expect(
+          erc20Bridged[
+            "receiveWithAuthorization(address,address,uint256,uint256,uint256,bytes32,bytes)"
+          ](
+            erc1271Wallet.address,
+            spender.address,
+            DEFAULT_AMOUNT,
+            validAfter,
+            validBefore,
+            fromNonce,
+            signature
+          )
+        ).to.be.revertedWithCustomError(
+          erc20Bridged,
+          "EIP3009Upgradeable__ErrorUnauthorized"
+        );
+      });
+
+      it("should revert if the signature's validAfter hasn't been reached", async () => {
+        const {
+          accounts: { erc1271WalletOwner, spender },
+          erc1271Wallet,
+          erc20Bridged,
+          domain,
+          DEFAULT_AMOUNT,
+        } = context;
+
+        const validAfter = ethers.constants.MaxUint256;
+        const validBefore = ethers.constants.MaxUint256;
+        const fromNonce = ethers.BigNumber.from(
+          ethers.utils.randomBytes(32)
+        )._hex;
+
+        const { type, data } = getEIP712Operation(
+          EIP712Operations.RECEIVE_WITH_AUTHORIZATION,
+          {
+            from: erc1271Wallet.address,
+            to: spender.address,
+            value: DEFAULT_AMOUNT,
+            validAfter,
+            validBefore,
+            nonce: fromNonce,
+          }
+        );
+        const signature = await signTypedData(
+          domain,
+          type,
+          data,
+          erc1271WalletOwner
+        );
+
+        await expect(
+          erc20Bridged
+            .connect(spender)
+            [
+              "receiveWithAuthorization(address,address,uint256,uint256,uint256,bytes32,bytes)"
+            ](
+              erc1271Wallet.address,
+              spender.address,
+              DEFAULT_AMOUNT,
+              validAfter,
+              validBefore,
+              fromNonce,
+              signature
+            )
+        ).to.be.revertedWithCustomError(
+          erc20Bridged,
+          "EIP3009Upgradeable__ErrorAuthEarly"
+        );
+      });
+
+      it("should revert if the signature's validBefore has been exceeded", async () => {
+        const {
+          accounts: { erc1271WalletOwner, spender },
+          erc1271Wallet,
+          erc20Bridged,
+          domain,
+          DEFAULT_AMOUNT,
+        } = context;
+
+        const validAfter = BigNumber.from(0);
+        const validBefore = validAfter;
+        const fromNonce = ethers.BigNumber.from(
+          ethers.utils.randomBytes(32)
+        )._hex;
+
+        const { type, data } = getEIP712Operation(
+          EIP712Operations.RECEIVE_WITH_AUTHORIZATION,
+          {
+            from: erc1271Wallet.address,
+            to: spender.address,
+            value: DEFAULT_AMOUNT,
+            validAfter,
+            validBefore,
+            nonce: fromNonce,
+          }
+        );
+        const signature = await signTypedData(
+          domain,
+          type,
+          data,
+          erc1271WalletOwner
+        );
+
+        await expect(
+          erc20Bridged
+            .connect(spender)
+            [
+              "receiveWithAuthorization(address,address,uint256,uint256,uint256,bytes32,bytes)"
+            ](
+              erc1271Wallet.address,
+              spender.address,
+              DEFAULT_AMOUNT,
+              validAfter,
+              validBefore,
+              fromNonce,
+              signature
+            )
+        ).to.be.revertedWithCustomError(
+          erc20Bridged,
+          "EIP3009Upgradeable__ErrorAuthExpired"
+        );
+      });
+
+      it("should revert if the signature has already been used", async () => {
+        const {
+          accounts: { erc1271WalletOwner, spender },
+          erc1271Wallet,
+          erc20Bridged,
+          domain,
+          DEFAULT_AMOUNT,
+        } = context;
+
+        const { nonce, validAfter, validBefore, signature } =
+          await validReceiveWithAuthorization(
+            erc1271WalletOwner,
+            spender,
+            erc20Bridged,
+            domain,
+            DEFAULT_AMOUNT,
+            {
+              erc1271WalletContract: erc1271Wallet.address,
+            }
+          );
+
+        await expect(
+          erc20Bridged
+            .connect(spender)
+            [
+              "receiveWithAuthorization(address,address,uint256,uint256,uint256,bytes32,bytes)"
+            ](
+              erc1271Wallet.address,
+              spender.address,
+              DEFAULT_AMOUNT,
+              validAfter,
+              validBefore,
+              nonce,
+              signature
+            )
+        )
+          .to.be.revertedWithCustomError(
+            erc20Bridged,
+            "EIP3009Upgradeable__ErrorNonceAlreadyUsed"
+          )
+          .withArgs(nonce);
+      });
+
+      it("should revert if the signature has been signed by someone else other than the owner", async () => {
+        const {
+          accounts: { erc1271WalletOwner, spender },
+          erc1271Wallet,
+          erc20Bridged,
+          domain,
+          DEFAULT_AMOUNT,
+        } = context;
+
+        const validAfter = 0;
+        const validBefore = ethers.constants.MaxUint256;
+        const fromNonce = ethers.BigNumber.from(
+          ethers.utils.randomBytes(32)
+        )._hex;
+
+        const { type, data } = getEIP712Operation(
+          EIP712Operations.RECEIVE_WITH_AUTHORIZATION,
+          {
+            from: erc1271Wallet.address,
+            to: spender.address,
+            value: DEFAULT_AMOUNT,
+            validAfter,
+            validBefore,
+            nonce: fromNonce,
+          }
+        );
+        const signature = await signTypedData(domain, type, data, spender);
+
+        await expect(
+          erc20Bridged
+            .connect(spender)
+            [
+              "receiveWithAuthorization(address,address,uint256,uint256,uint256,bytes32,bytes)"
+            ](
+              erc1271Wallet.address,
+              spender.address,
+              DEFAULT_AMOUNT,
+              validAfter,
+              validBefore,
+              fromNonce,
+              signature
+            )
+        ).to.be.revertedWithCustomError(
+          erc20Bridged,
+          "EIP3009Upgradeable__ErrorInvalidSignature"
+        );
+      });
+
+      it(">>> works as expected (using r,s,v)", async () => {
+        const {
+          accounts: { erc1271WalletOwner, spender },
+          erc1271Wallet,
+          erc20Bridged,
+          domain,
+          DEFAULT_AMOUNT,
+        } = context;
+
+        assert.isTrue(
+          (await erc20Bridged.balanceOf(spender.address)).eq(BigNumber.from(0))
+        );
+
+        const validAfter = BigNumber.from(0);
+        const validBefore = ethers.constants.MaxUint256;
+        const fromNonce = ethers.BigNumber.from(
+          ethers.utils.randomBytes(32)
+        )._hex;
+
+        const { type, data } = getEIP712Operation(
+          EIP712Operations.RECEIVE_WITH_AUTHORIZATION,
+          {
+            from: erc1271Wallet.address,
+            to: spender.address,
+            value: DEFAULT_AMOUNT,
+            validAfter,
+            validBefore,
+            nonce: fromNonce,
+          }
+        );
+        const signature = await signTypedData(
+          domain,
+          type,
+          data,
+          erc1271WalletOwner
+        );
+
+        const r = signature.slice(0, 66);
+        const s = "0x" + signature.slice(66, 130);
+        const v = "0x" + signature.slice(130, 132);
+
+        const transferTx = await erc20Bridged
+          .connect(spender)
+          [
+            "receiveWithAuthorization(address,address,uint256,uint256,uint256,bytes32,uint8,bytes32,bytes32)"
+          ](
+            erc1271Wallet.address,
+            spender.address,
+            DEFAULT_AMOUNT,
+            validAfter,
+            validBefore,
+            fromNonce,
+            v,
+            r,
+            s
+          );
+
+        expect(transferTx)
+          .to.emit(erc20Bridged, "EIP3009Upgradeable__AuthorizationUsed")
+          .withArgs(erc1271Wallet.address, fromNonce)
+          .to.emit(erc20Bridged, "Transfer")
+          .withArgs(erc1271Wallet.address, spender.address, DEFAULT_AMOUNT);
+
+        await transferTx.wait();
+
+        assert.isTrue(
+          (await erc20Bridged.balanceOf(spender.address)).eq(DEFAULT_AMOUNT),
+          "Incorrect spender balance"
+        );
+      });
+
+      it(">>> works as expected (using full signature)", async () => {
+        const {
+          accounts: { erc1271WalletOwner, spender },
+          erc1271Wallet,
+          erc20Bridged,
+          domain,
+          DEFAULT_AMOUNT,
+        } = context;
+
+        assert.isTrue(
+          (await erc20Bridged.balanceOf(spender.address)).eq(BigNumber.from(0))
+        );
+
+        await validTransferWithAuthorization(
+          erc1271WalletOwner,
+          spender,
+          erc20Bridged,
+          domain,
+          DEFAULT_AMOUNT,
+          {
+            erc1271WalletContract: erc1271Wallet.address,
+          }
+        );
+
+        assert.isTrue(
+          (await erc20Bridged.balanceOf(spender.address)).eq(DEFAULT_AMOUNT),
+          "Incorrect spender balance"
+        );
+      });
+    });
+  });
 });
 
 const addToBlockedList = async (
@@ -1267,7 +1958,7 @@ const validPermit = async (
     : owner.address;
   const spenderAddr = spender.address;
   const amount = ethers.utils.parseEther("1");
-  const ownerNonce = 0;
+  const ownerNonce = await erc20Bridged.nonces(ownerAddr);
   const deadline = opts
     ? opts.customDeadline || ethers.constants.MaxUint256
     : ethers.constants.MaxInt256;
@@ -1343,6 +2034,68 @@ const validTransferWithAuthorization = async (
   const transferTx = await erc20Bridged[
     "transferWithAuthorization(address,address,uint256,uint256,uint256,bytes32,bytes)"
   ](fromAddr, toAddr, amount, validAfter, validBefore, fromNonce, signature);
+
+  expect(transferTx)
+    .to.emit(erc20Bridged, "EIP3009Upgradeable__AuthorizationUsed")
+    .withArgs(from.address, fromNonce)
+    .to.emit(erc20Bridged, "Transfer")
+    .withArgs(from.address, to.address, amount);
+
+  await transferTx.wait();
+
+  return {
+    from,
+    to,
+    value: amount,
+    nonce: fromNonce,
+    validAfter,
+    validBefore,
+    signature,
+  };
+};
+
+const validReceiveWithAuthorization = async (
+  from: Wallet,
+  to: Wallet,
+  erc20Bridged: TetherZkSync,
+  domain: any,
+  amount: BigNumber,
+  opts?: {
+    validAfter?: BigNumber;
+    validBefore?: BigNumber;
+    erc1271WalletContract?: string;
+  }
+) => {
+  const fromAddr = opts
+    ? opts.erc1271WalletContract || from.address
+    : from.address;
+  const toAddr = to.address;
+  const fromNonce = ethers.BigNumber.from(ethers.utils.randomBytes(32))._hex;
+  const validAfter = opts
+    ? opts.validAfter || BigNumber.from(0)
+    : BigNumber.from(0);
+  const validBefore = opts
+    ? opts.validBefore || ethers.constants.MaxUint256
+    : ethers.constants.MaxUint256;
+
+  const { type, data } = getEIP712Operation(
+    EIP712Operations.RECEIVE_WITH_AUTHORIZATION,
+    {
+      from: fromAddr,
+      to: toAddr,
+      value: amount,
+      validAfter,
+      validBefore,
+      nonce: fromNonce,
+    }
+  );
+  const signature = await signTypedData(domain, type, data, from);
+
+  const transferTx = await erc20Bridged
+    .connect(to)
+    [
+      "receiveWithAuthorization(address,address,uint256,uint256,uint256,bytes32,bytes)"
+    ](fromAddr, toAddr, amount, validAfter, validBefore, fromNonce, signature);
 
   expect(transferTx)
     .to.emit(erc20Bridged, "EIP3009Upgradeable__AuthorizationUsed")
