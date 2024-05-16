@@ -112,5 +112,6 @@ export async function setup() {
       BRIDGE_ROLE: ethers.utils.hexlify(BigNumber.from(BRIDGE_ROLE)),
     },
     DEFAULT_AMOUNT: INITIAL_BALANCE.div(10),
+    provider,
   };
 }

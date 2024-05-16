@@ -3,22 +3,13 @@ import { describe } from "mocha";
 import { BigNumber, ethers } from "ethers";
 import { Wallet } from "zksync-ethers";
 import { setup } from "./setup/erc20.setup";
+import { domainSeparator } from "./utils/eip712/domainSeparator";
 import {
-  CHAIN_ID,
-  L2_TOKEN_NAME,
-  L2_TOKEN_SINGING_DOMAIN_VERSION,
-} from "./utils/constants";
-import { domainSeparator } from "./utils/eip712";
-
-const types: Record<string, ethers.TypedDataField[]> = {
-  Permit: [
-    { name: "owner", type: "address" },
-    { name: "spender", type: "address" },
-    { name: "value", type: "uint256" },
-    { name: "nonce", type: "uint256" },
-    { name: "deadline", type: "uint256" },
-  ],
-};
+  EIP712Operations,
+  getEIP712Operation,
+  signTypedData,
+} from "./utils/eip712";
+import { TetherZkSync } from "../typechain";
 
 describe("~~~~~ ERC20Bridged ~~~~~", async () => {
   let context: Awaited<ReturnType<typeof setup>>;
@@ -252,9 +243,37 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
     });
   });
 
-  describe("=== Permit ===", async () => {
+  describe.only("=== Permit ===", async () => {
     describe("*** EOA ***", async () => {
-      it(">>> Works as expected", async () => {
+      it("should revert if the signature has already been used", async () => {
+        const {
+          accounts: { initialHolder, spender },
+          erc20Bridged,
+          domain,
+        } = context;
+
+        const { owner, value, deadline, signature } = await validPermit(
+          initialHolder,
+          spender,
+          erc20Bridged,
+          domain
+        );
+
+        await expect(
+          erc20Bridged["permit(address,address,uint256,uint256,bytes)"](
+            owner.address,
+            spender.address,
+            value,
+            deadline,
+            signature
+          )
+        ).to.be.revertedWithCustomError(
+          erc20Bridged,
+          "EIP3009Upgradeable__ErrorInvalidSignature"
+        );
+      });
+
+      it("should revert if the signature has been signed by someone else than the owner", async () => {
         const {
           accounts: { initialHolder, spender },
           erc20Bridged,
@@ -262,38 +281,108 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
         } = context;
 
         const ownerAddr = initialHolder.address;
-        const spenderAddrs = spender.address;
+        const spenderAddr = spender.address;
         const amount = ethers.utils.parseEther("1");
         const ownerNonce = 0;
         const deadline = ethers.constants.MaxUint256;
 
-        const value = {
+        const { type, data } = getEIP712Operation(EIP712Operations.PERMIT, {
           owner: ownerAddr,
-          spender: spenderAddrs,
+          spender: spenderAddr,
           value: amount,
           nonce: ownerNonce,
-          deadline,
-        };
+          deadline: deadline,
+        });
+        const signature = await signTypedData(domain, type, data, spender); // spender signinig instead of initialHolder
 
-        const signature = await initialHolder._signTypedData(
-          domain,
-          types,
-          value
+        await expect(
+          erc20Bridged["permit(address,address,uint256,uint256,bytes)"](
+            ownerAddr,
+            spenderAddr,
+            amount,
+            deadline,
+            signature
+          )
+        ).to.be.revertedWithCustomError(
+          erc20Bridged,
+          "EIP3009Upgradeable__ErrorInvalidSignature"
         );
+      });
+
+      it("should revert if the signature's deadline has been exceeded", async () => {
+        const {
+          accounts: { initialHolder, spender },
+          erc20Bridged,
+          domain,
+        } = context;
+
+        const ownerAddr = initialHolder.address;
+        const spenderAddr = spender.address;
+        const amount = ethers.utils.parseEther("1");
+        const ownerNonce = 0;
+        const deadline = BigNumber.from(0);
+
+        const { type, data } = getEIP712Operation(EIP712Operations.PERMIT, {
+          owner: ownerAddr,
+          spender: spenderAddr,
+          value: amount,
+          nonce: ownerNonce,
+          deadline: deadline,
+        });
+        const signature = await signTypedData(
+          domain,
+          type,
+          data,
+          initialHolder
+        );
+
+        await expect(
+          erc20Bridged["permit(address,address,uint256,uint256,bytes)"](
+            ownerAddr,
+            spenderAddr,
+            amount,
+            deadline,
+            signature
+          )
+        ).to.be.revertedWith("ERC20Permit: expired deadline");
+      });
+
+      it(">>> works as expected (using r,s,v)", async () => {
+        const {
+          accounts: { initialHolder, spender },
+          erc20Bridged,
+          domain,
+        } = context;
+
+        const ownerAddr = initialHolder.address;
+        const spenderAddr = spender.address;
+        const amount = ethers.utils.parseEther("1");
+        const ownerNonce = 0;
+        const deadline = ethers.constants.MaxUint256;
+
+        const { type, data } = getEIP712Operation(EIP712Operations.PERMIT, {
+          owner: ownerAddr,
+          spender: spenderAddr,
+          value: amount,
+          nonce: ownerNonce,
+          deadline: deadline,
+        });
+        const signature = await signTypedData(
+          domain,
+          type,
+          data,
+          initialHolder
+        );
+
         const r = signature.slice(0, 66);
         const s = "0x" + signature.slice(66, 130);
         const v = "0x" + signature.slice(130, 132);
 
-        const permitTx = await erc20Bridged.permit(
-          ownerAddr,
-          spenderAddrs,
-          amount,
-          deadline,
-          v,
-          r,
-          s
-        );
-        await permitTx.wait();
+        await (
+          await erc20Bridged[
+            "permit(address,address,uint256,uint256,uint8,bytes32,bytes32)"
+          ](ownerAddr, spenderAddr, amount, deadline, v, r, s)
+        ).wait();
 
         assert.isTrue(
           (await erc20Bridged.nonces(ownerAddr)).eq(1),
@@ -302,330 +391,226 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
         );
 
         assert.isTrue(
-          (await erc20Bridged.allowance(ownerAddr, spenderAddrs)).eq(amount),
+          (await erc20Bridged.allowance(ownerAddr, spenderAddr)).eq(amount),
           "Incorrect spender allowance"
         );
       });
 
-      it("Rejects reused signature", async () => {
+      it(">>> works as expected (using full signature)", async () => {
         const {
           accounts: { initialHolder, spender },
           erc20Bridged,
           domain,
         } = context;
 
-        const ownerAddr = initialHolder.address;
-        const spenderAddrs = spender.address;
-        const amount = ethers.utils.parseEther("1");
-        const ownerNonce = 0;
-        const deadline = ethers.constants.MaxUint256;
-
-        const value = {
-          owner: ownerAddr,
-          spender: spenderAddrs,
-          value: amount,
-          nonce: ownerNonce,
-          deadline,
-        };
-
-        const signature = await initialHolder._signTypedData(
-          domain,
-          types,
-          value
-        );
-        const r = signature.slice(0, 66);
-        const s = "0x" + signature.slice(66, 130);
-        const v = "0x" + signature.slice(130, 132);
-
-        await expect(
-          erc20Bridged.permit(
-            ownerAddr,
-            spenderAddrs,
-            amount,
-            deadline,
-            v,
-            r,
-            s
-          )
-        ).to.be.revertedWith("ERC20Permit: invalid signature");
-      });
-
-      it("Rejects invalid signer", async () => {
-        const {
-          accounts: { initialHolder, spender, deployerWallet: invalidSigner },
+        const { value } = await validPermit(
+          initialHolder,
+          spender,
           erc20Bridged,
-          domain,
-        } = context;
-
-        const ownerAddr = initialHolder.address;
-        const spenderAddrs = spender.address;
-        const amount = ethers.utils.parseEther("1");
-        const ownerNonce = 1;
-        const deadline = ethers.constants.MaxUint256;
-
-        const value = {
-          owner: ownerAddr,
-          spender: spenderAddrs,
-          value: amount,
-          nonce: ownerNonce,
-          deadline,
-        };
-
-        const signature = await invalidSigner._signTypedData(
-          domain,
-          types,
-          value
+          domain
         );
-        const r = signature.slice(0, 66);
-        const s = "0x" + signature.slice(66, 130);
-        const v = "0x" + signature.slice(130, 132);
 
-        await expect(
-          erc20Bridged.permit(
-            ownerAddr,
-            spenderAddrs,
-            amount,
-            deadline,
-            v,
-            r,
-            s
-          )
-        ).to.be.revertedWith("ERC20Permit: invalid signature");
-      });
-
-      it("Rejects expired permit deadline", async () => {
-        const {
-          accounts: { initialHolder, spender },
-          erc20Bridged,
-          domain,
-        } = context;
-
-        const ownerAddr = initialHolder.address;
-        const spenderAddrs = spender.address;
-        const amount = ethers.utils.parseEther("1");
-        const ownerNonce = 1;
-        const deadline = Math.floor(Date.now() / 1000) - 604_800; // 1 week = 604_800 s
-
-        const value = {
-          owner: ownerAddr,
-          spender: spenderAddrs,
-          value: amount,
-          nonce: ownerNonce,
-          deadline,
-        };
-
-        const signature = await initialHolder._signTypedData(
-          domain,
-          types,
-          value
+        assert.isTrue(
+          (await erc20Bridged.nonces(initialHolder.address)).eq(1),
+          "Incorrect owner nonce"
         );
-        const r = signature.slice(0, 66);
-        const s = "0x" + signature.slice(66, 130);
-        const v = "0x" + signature.slice(130, 132);
 
-        await expect(
-          erc20Bridged.permit(
-            ownerAddr,
-            spenderAddrs,
-            amount,
-            deadline,
-            v,
-            r,
-            s
-          )
-        ).to.be.revertedWithCustomError(
-          erc20Bridged,
-          "ERC2612ExpiredSignature"
+        assert.isTrue(
+          (
+            await erc20Bridged.allowance(initialHolder.address, spender.address)
+          ).eq(value),
+          "Incorrect spender allowance"
         );
       });
     });
 
     describe("*** ERC1271Wallet ***", async () => {
-      it(">>> Works as expected", async () => {
+      it("should revert if the signature has already been used", async () => {
         const {
-          accounts: { spender, erc1271WalletOwner },
-          erc20Bridged,
+          accounts: { erc1271WalletOwner, spender },
           erc1271Wallet,
+          erc20Bridged,
+          domain,
+        } = context;
+
+        const { value, deadline, signature } = await validPermit(
+          erc1271WalletOwner,
+          spender,
+          erc20Bridged,
+          domain,
+          {
+            erc1271WalletContract: erc1271Wallet.address,
+          }
+        );
+
+        await expect(
+          erc20Bridged["permit(address,address,uint256,uint256,bytes)"](
+            erc1271Wallet.address,
+            spender.address,
+            value,
+            deadline,
+            signature
+          )
+        ).to.be.revertedWithCustomError(
+          erc20Bridged,
+          "EIP3009Upgradeable__ErrorInvalidSignature"
+        );
+      });
+
+      it("should revert if the signature has been signed by someone else than the owner", async () => {
+        const {
+          accounts: { erc1271WalletOwner, spender },
+          erc1271Wallet,
+          erc20Bridged,
           domain,
         } = context;
 
         const ownerAddr = erc1271Wallet.address;
-        const spenderAddrs = spender.address;
+        const spenderAddr = spender.address;
         const amount = ethers.utils.parseEther("1");
         const ownerNonce = 0;
         const deadline = ethers.constants.MaxUint256;
 
-        const value = {
+        const { type, data } = getEIP712Operation(EIP712Operations.PERMIT, {
           owner: ownerAddr,
-          spender: spenderAddrs,
+          spender: spenderAddr,
           value: amount,
           nonce: ownerNonce,
-          deadline,
-        };
+          deadline: deadline,
+        });
+        const signature = await signTypedData(domain, type, data, spender);
 
-        const signature = await erc1271WalletOwner._signTypedData(
-          domain,
-          types,
-          value
+        await expect(
+          erc20Bridged["permit(address,address,uint256,uint256,bytes)"](
+            ownerAddr,
+            spender.address,
+            amount,
+            deadline,
+            signature
+          )
+        ).to.be.revertedWithCustomError(
+          erc20Bridged,
+          "EIP3009Upgradeable__ErrorInvalidSignature"
         );
+      });
+
+      it("should revert if the signature's deadline has been exceeded", async () => {
+        const {
+          accounts: { erc1271WalletOwner, spender },
+          erc1271Wallet,
+          erc20Bridged,
+          domain,
+        } = context;
+
+        const ownerAddr = erc1271Wallet.address;
+        const spenderAddr = spender.address;
+        const amount = ethers.utils.parseEther("1");
+        const ownerNonce = 0;
+        const deadline = BigNumber.from(0);
+
+        const { type, data } = getEIP712Operation(EIP712Operations.PERMIT, {
+          owner: ownerAddr,
+          spender: spenderAddr,
+          value: amount,
+          nonce: ownerNonce,
+          deadline: deadline,
+        });
+        const signature = await signTypedData(
+          domain,
+          type,
+          data,
+          erc1271WalletOwner
+        );
+
+        await expect(
+          erc20Bridged["permit(address,address,uint256,uint256,bytes)"](
+            ownerAddr,
+            spenderAddr,
+            amount,
+            deadline,
+            signature
+          )
+        ).to.be.revertedWith("ERC20Permit: expired deadline");
+      });
+
+      it(">>> works as expected (using r,s,v)", async () => {
+        const {
+          accounts: { erc1271WalletOwner, spender },
+          erc1271Wallet,
+          erc20Bridged,
+          domain,
+        } = context;
+
+        const ownerAddr = erc1271Wallet.address;
+        const spenderAddr = spender.address;
+        const amount = ethers.utils.parseEther("1");
+        const ownerNonce = 0;
+        const deadline = ethers.constants.MaxUint256;
+
+        const { type, data } = getEIP712Operation(EIP712Operations.PERMIT, {
+          owner: ownerAddr,
+          spender: spenderAddr,
+          value: amount,
+          nonce: ownerNonce,
+          deadline: deadline,
+        });
+        const signature = await signTypedData(
+          domain,
+          type,
+          data,
+          erc1271WalletOwner
+        );
+
         const r = signature.slice(0, 66);
         const s = "0x" + signature.slice(66, 130);
         const v = "0x" + signature.slice(130, 132);
 
-        const permitTx = await erc20Bridged.permit(
-          ownerAddr,
-          spenderAddrs,
-          amount,
-          deadline,
-          v,
-          r,
-          s
-        );
-        await permitTx.wait();
+        await (
+          await erc20Bridged[
+            "permit(address,address,uint256,uint256,uint8,bytes32,bytes32)"
+          ](ownerAddr, spenderAddr, amount, deadline, v, r, s)
+        ).wait();
 
         assert.isTrue(
           (await erc20Bridged.nonces(ownerAddr)).eq(1),
+          // BigNumber.from(1).toString(),
           "Incorrect owner nonce"
         );
 
         assert.isTrue(
-          (await erc20Bridged.allowance(ownerAddr, spenderAddrs)).eq(amount),
+          (await erc20Bridged.allowance(ownerAddr, spenderAddr)).eq(amount),
           "Incorrect spender allowance"
         );
       });
 
-      it("Rejects reused signature", async () => {
+      it(">>> works as expected (using full signature)", async () => {
         const {
-          accounts: { spender, erc1271WalletOwner },
-          erc20Bridged,
+          accounts: { erc1271WalletOwner, spender },
           erc1271Wallet,
+          erc20Bridged,
           domain,
         } = context;
 
-        const ownerAddr = erc1271Wallet.address;
-        const spenderAddrs = spender.address;
-        const amount = ethers.utils.parseEther("1");
-        const ownerNonce = 0;
-        const deadline = ethers.constants.MaxUint256;
-
-        const value = {
-          owner: ownerAddr,
-          spender: spenderAddrs,
-          value: amount,
-          nonce: ownerNonce,
-          deadline,
-        };
-
-        const signature = await erc1271WalletOwner._signTypedData(
-          domain,
-          types,
-          value
-        );
-        const r = signature.slice(0, 66);
-        const s = "0x" + signature.slice(66, 130);
-        const v = "0x" + signature.slice(130, 132);
-
-        await expect(
-          erc20Bridged.permit(
-            ownerAddr,
-            spenderAddrs,
-            amount,
-            deadline,
-            v,
-            r,
-            s
-          )
-        ).to.be.revertedWith("ERC20Permit: invalid signature");
-      });
-
-      it("Rejects invalid signer", async () => {
-        const {
-          accounts: { spender, deployerWallet: invalidSigner },
+        const { value } = await validPermit(
+          erc1271WalletOwner,
+          spender,
           erc20Bridged,
-          erc1271Wallet,
           domain,
-        } = context;
-
-        const ownerAddr = erc1271Wallet.address;
-        const spenderAddrs = spender.address;
-        const amount = ethers.utils.parseEther("1");
-        const ownerNonce = 1;
-        const deadline = ethers.constants.MaxUint256;
-
-        const value = {
-          owner: ownerAddr,
-          spender: spenderAddrs,
-          value: amount,
-          nonce: ownerNonce,
-          deadline,
-        };
-
-        const signature = await invalidSigner._signTypedData(
-          domain,
-          types,
-          value
+          {
+            erc1271WalletContract: erc1271Wallet.address,
+          }
         );
-        const r = signature.slice(0, 66);
-        const s = "0x" + signature.slice(66, 130);
-        const v = "0x" + signature.slice(130, 132);
 
-        await expect(
-          erc20Bridged.permit(
-            ownerAddr,
-            spenderAddrs,
-            amount,
-            deadline,
-            v,
-            r,
-            s
-          )
-        ).to.be.revertedWith("ERC20Permit: invalid signature");
-      });
-
-      it("Rejects expired permit deadline", async () => {
-        const {
-          accounts: { spender, erc1271WalletOwner },
-          erc20Bridged,
-          erc1271Wallet,
-          domain,
-        } = context;
-
-        const ownerAddr = erc1271Wallet.address;
-        const spenderAddrs = spender.address;
-        const amount = ethers.utils.parseEther("1");
-        const ownerNonce = 1;
-        const deadline = Math.floor(Date.now() / 1000) - 604_800; // 1 week = 604_800 s
-
-        const value = {
-          owner: ownerAddr,
-          spender: spenderAddrs,
-          value: amount,
-          nonce: ownerNonce,
-          deadline,
-        };
-
-        const signature = await erc1271WalletOwner._signTypedData(
-          domain,
-          types,
-          value
+        assert.isTrue(
+          (await erc20Bridged.nonces(erc1271Wallet.address)).eq(1),
+          "Incorrect owner nonce"
         );
-        const r = signature.slice(0, 66);
-        const s = "0x" + signature.slice(66, 130);
-        const v = "0x" + signature.slice(130, 132);
 
-        await expect(
-          erc20Bridged.permit(
-            ownerAddr,
-            spenderAddrs,
-            amount,
-            deadline,
-            v,
-            r,
-            s
-          )
-        ).to.be.revertedWithCustomError(
-          erc20Bridged,
-          "ERC2612ExpiredSignature"
+        assert.isTrue(
+          (
+            await erc20Bridged.allowance(erc1271Wallet.address, spender.address)
+          ).eq(value),
+          "Incorrect spender allowance"
         );
       });
     });
@@ -683,4 +668,53 @@ const blockAndDestroyBlockedFunds = async (
     (await erc20.balanceOf(toDestroy.address)).eq(0),
     "Tokens were not destroyed"
   );
+};
+
+const validPermit = async (
+  owner: Wallet,
+  spender: Wallet,
+  erc20Bridged: TetherZkSync,
+  domain: any,
+  opts?: {
+    customDeadline?: BigNumber;
+    erc1271WalletContract?: string;
+  }
+) => {
+  const ownerAddr = opts
+    ? opts.erc1271WalletContract || owner.address
+    : owner.address;
+  const spenderAddr = spender.address;
+  const amount = ethers.utils.parseEther("1");
+  const ownerNonce = 0;
+  const deadline = opts
+    ? opts.customDeadline || ethers.constants.MaxUint256
+    : ethers.constants.MaxInt256;
+
+  const { type, data } = getEIP712Operation(EIP712Operations.PERMIT, {
+    owner: ownerAddr,
+    spender: spenderAddr,
+    value: amount,
+    nonce: ownerNonce,
+    deadline: deadline,
+  });
+  const signature = await signTypedData(domain, type, data, owner);
+
+  await (
+    await erc20Bridged["permit(address,address,uint256,uint256,bytes)"](
+      ownerAddr,
+      spenderAddr,
+      amount,
+      deadline,
+      signature
+    )
+  ).wait();
+
+  return {
+    owner,
+    spender,
+    value: amount,
+    nonce: ownerNonce,
+    deadline,
+    signature,
+  };
 };
