@@ -12,6 +12,7 @@ import {
   L2_TOKEN_DECIMALS,
   L2_TOKEN_SINGING_DOMAIN_VERSION,
 } from "../utils/constants";
+import { TetherZkSync } from "../../typechain";
 
 const INITIAL_BALANCE = ethers.utils.parseEther("10");
 
@@ -28,7 +29,9 @@ export async function setup() {
 
   // L2 token
   const erc20BridgedArtifact = await deployer.loadArtifact("TetherZkSync");
-  const erc20BridgedContract = await deployer.deploy(erc20BridgedArtifact, []);
+  const erc20BridgedContract = await deployer.deploy(erc20BridgedArtifact, [], {
+    gasLimit: 10_000_000,
+  });
   const erc20BridgedImpl = await erc20BridgedContract.deployed();
 
   // proxy
@@ -46,12 +49,17 @@ export async function setup() {
     erc20BridgedImpl.address,
     erc20BridgedArtifact.abi,
     deployer.zkWallet
-  );
+  ) as TetherZkSync;
 
-  const initTx = await erc20Bridged[
-    "__TetherZkSync_init(string,string,uint8,address)"
-  ](L2_TOKEN_NAME, L2_TOKEN_SYMBOL, L2_TOKEN_DECIMALS, admin.address);
+  const initTx = await erc20Bridged.__TetherZkSync_init(
+    L2_TOKEN_NAME,
+    L2_TOKEN_SYMBOL,
+    L2_TOKEN_DECIMALS,
+    admin.address
+  );
   await initTx.wait();
+
+  await erc20Bridged.transferOwnership(admin.address);
 
   const erc1271WalletArtifact = await deployer.loadArtifact(
     "ERC1271WalletStub"
@@ -64,15 +72,16 @@ export async function setup() {
 
   // mint initial balance to initialHolder wallet
   await (
-    await erc20Bridged.bridgeMint(initialHolder.address, INITIAL_BALANCE)
+    await erc20Bridged
+      .connect(admin)
+      .bridgeMint(initialHolder.address, INITIAL_BALANCE)
   ).wait();
 
   // mint initial balance to smart contract wallet
   await (
-    await erc20Bridged.bridgeMint(
-      erc1271WalletContract.address,
-      INITIAL_BALANCE
-    )
+    await erc20Bridged
+      .connect(admin)
+      .bridgeMint(erc1271WalletContract.address, INITIAL_BALANCE)
   ).wait();
 
   const BRIDGE_ROLE = await erc20Bridged.BRIDGE_ROLE();
@@ -87,6 +96,11 @@ export async function setup() {
     },
     erc20Bridged,
     erc1271Wallet: erc1271WalletContract,
+    erc20Metadata: {
+      name: L2_TOKEN_NAME,
+      symbol: L2_TOKEN_SYMBOL,
+      decimals: L2_TOKEN_DECIMALS,
+    },
     domain: {
       name: L2_TOKEN_NAME,
       version: L2_TOKEN_SINGING_DOMAIN_VERSION,
@@ -95,7 +109,8 @@ export async function setup() {
     },
     gasLimit: 10_000_000,
     roles: {
-      ADDRESS_FREEZER_ROLE: ethers.utils.hexlify(BigNumber.from(BRIDGE_ROLE)),
+      BRIDGE_ROLE: ethers.utils.hexlify(BigNumber.from(BRIDGE_ROLE)),
     },
+    DEFAULT_AMOUNT: INITIAL_BALANCE.div(10),
   };
 }
