@@ -4,8 +4,6 @@ pragma solidity 0.8.20;
 import "./TetherToken.sol";
 import "./EIP3009Upgradeable.sol";
 
-import "hardhat/console.sol";
-
 contract TetherTokenV2 is TetherToken, EIP3009Upgradeable {
     /////////////////////////////////////
     //    Public/External Functions    //
@@ -167,7 +165,7 @@ contract TetherTokenV2 is TetherToken, EIP3009Upgradeable {
 
         _requireValidSignature(
             owner_,
-            keccak256(abi.encode(PERMIT_TYPEHASH, owner_, spender, value, _useNonce(owner_), deadline)),
+            keccak256(abi.encode(PERMIT_TYPEHASH, owner_, spender, value, _useNonce(owner_), deadline)), // note: perhaps it would be the best to use nonce through an "_authorizationStates"
             signature
         );
 

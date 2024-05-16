@@ -122,7 +122,7 @@ abstract contract EIP3009Upgradeable is Initializable, EIP712Upgradeable {
         _requireValidAuthorization(from, nonce, validAfter, validBefore);
         _requireValidSignature(
             from,
-            keccak256(abi.encode(RECEIVE_WITH_AUTHORIZATION_TYPEHASH, from, to, value, validAfter, validBefore, nonce)),
+            keccak256(abi.encode(TRANSFER_WITH_AUTHORIZATION_TYPEHASH, from, to, value, validAfter, validBefore, nonce)),
             signature
         );
 
