@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.13;
+pragma solidity 0.8.20;
 
 // This file is a workaround for Hardhat's artifacts. Hardhat creates artifacts only for declared contracts.
 // So here we import those contracts that are needed only in offchain scripts.

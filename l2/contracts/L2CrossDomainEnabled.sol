@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.10;
+pragma solidity 0.8.20;
 
-import { AddressAliasHelper } from "@matterlabs/zksync-contracts/l1/contracts/vendor/AddressAliasHelper.sol";
-import { IL1Messenger } from "@matterlabs/zksync-contracts/l2/system-contracts/interfaces/IL1Messenger.sol";
+import {AddressAliasHelper} from "@matterlabs/zksync-contracts/l1/contracts/vendor/AddressAliasHelper.sol";
+import {IL1Messenger} from "@matterlabs/zksync-contracts/l2/system-contracts/interfaces/IL1Messenger.sol";
 
 /// @notice A helper contract to simplify zkSync to Ethereum communication process
 contract L2CrossDomainEnabled {

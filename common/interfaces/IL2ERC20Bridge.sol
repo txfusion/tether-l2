@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.10;
+pragma solidity 0.8.20;
 
 /// @notice The L2 token bridge works with the L1 token bridge to enable ERC20 token bridging
 ///     between L1 and L2. Mints tokens during deposits and burns tokens during withdrawals.
@@ -11,12 +11,10 @@ interface IL2ERC20Bridge {
      * @param l2Receiver The address of token receiver on L2
      * @param l2Token The address of L2 token
      * @param amount The amount of tokens to be minted
-     **/
+     *
+     */
     event FinalizeDeposit(
-        address indexed l1Sender,
-        address indexed l2Receiver,
-        address indexed l2Token,
-        uint256 amount
+        address indexed l1Sender, address indexed l2Receiver, address indexed l2Token, uint256 amount
     );
 
     /**
@@ -25,12 +23,10 @@ interface IL2ERC20Bridge {
      * @param l1Receiver The address of token receiver on L1
      * @param l2Token The address of L2 token
      * @param amount The amount of tokens to be withdrawn
-     **/
+     *
+     */
     event WithdrawalInitiated(
-        address indexed l2Sender,
-        address indexed l1Receiver,
-        address indexed l2Token,
-        uint256 amount
+        address indexed l2Sender, address indexed l1Receiver, address indexed l2Token, uint256 amount
     );
 
     /// @notice Finalize the deposit and mint tokens
@@ -52,11 +48,7 @@ interface IL2ERC20Bridge {
     /// @param _l1Receiver The account address that should receive tokens on L1
     /// @param _l2Token The L2 token address which is withdrawn
     /// @param _amount The total amount of tokens to be withdrawn
-    function withdraw(
-        address _l1Receiver,
-        address _l2Token,
-        uint256 _amount
-    ) external;
+    function withdraw(address _l1Receiver, address _l2Token, uint256 _amount) external;
 
     /// @notice Returns the address of the L1 token contract
     function l1TokenAddress(address _l2Token) external view returns (address);
@@ -67,10 +59,5 @@ interface IL2ERC20Bridge {
     /// @notice Returns the address of the corresponding L1 bridge contract
     function l1Bridge() external view returns (address);
 
-    function initialize(
-        address _l1TokenBridge,
-        address _l1Token,
-        address _l2Token,
-        address _admin
-    ) external;
+    function initialize(address _l1TokenBridge, address _l1Token, address _l2Token, address _admin) external;
 }
