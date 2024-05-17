@@ -10,7 +10,7 @@ const IS_LOCAL = (process.env.NODE_ENV as string) === "local";
 
 const config: HardhatUserConfig & { etherscan: { apiKey: string } } = {
   solidity: {
-    version: "0.8.15",
+    version: "0.8.20",
     settings: {
       optimizer: {
         enabled: true,

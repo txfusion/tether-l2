@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.13;
+pragma solidity 0.8.20;
 
 import {IL2ERC20Bridge} from "../../../common/interfaces/IL2ERC20Bridge.sol";
 
@@ -15,12 +15,6 @@ contract L1ERC20BridgeStub {
         address _l2Bridge,
         bytes memory data
     ) public payable {
-        IL2ERC20Bridge(_l2Bridge).finalizeDeposit{value: msg.value}(
-            msg.sender,
-            _l2Receiver,
-            _l1Token,
-            _amount,
-            data
-        );
+        IL2ERC20Bridge(_l2Bridge).finalizeDeposit{value: msg.value}(msg.sender, _l2Receiver, _l1Token, _amount, data);
     }
 }

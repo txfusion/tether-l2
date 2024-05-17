@@ -8,6 +8,7 @@ export const PRIVATE_KEY = process.env.PRIVATE_KEY as string;
 export const ZKSYNC_PROVIDER_URL = process.env.ZKSYNC_PROVIDER_URL as string;
 
 export const ERC20_BRIDGED_CONSTANTS = {
+  CONTRACT_NAME: "TetherZkSync",
   NAME: "Tether USD",
   SYMBOL: "USDT",
   DECIMALS: 6,

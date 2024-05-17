@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.13;
+pragma solidity 0.8.20;
 
 interface IL1ERC20Bridge {
     /// @dev _l1Token Address of token on L1
@@ -24,7 +24,8 @@ interface IL1ERC20Bridge {
      * @param refundRecipient The address of the refundRecipient on L2
      * @param l1Token The address of the token on L1
      * @param amount The amount of tokens deposited
-     **/
+     *
+     */
     event DepositInitiated(
         bytes32 indexed l2DepositTxHash,
         address indexed from,
@@ -39,31 +40,22 @@ interface IL1ERC20Bridge {
      * @param to The address of the recipient on L1
      * @param l1Token The address of L1 token
      * @param amount The amount of tokens to be withdrawn
-     **/
-    event WithdrawalFinalized(
-        address indexed to,
-        address indexed l1Token,
-        uint256 amount
-    );
+     *
+     */
+    event WithdrawalFinalized(address indexed to, address indexed l1Token, uint256 amount);
 
     /**
      * @dev Emitted when the claimFailedDeposit function is called
      * @param to The address of the the recipient on L1
      * @param l1Token The address of L1 token
      * @param amount The amount of tokens to be claimed
-     **/
-    event ClaimedFailedDeposit(
-        address indexed to,
-        address indexed l1Token,
-        uint256 amount
-    );
+     *
+     */
+    event ClaimedFailedDeposit(address indexed to, address indexed l1Token, uint256 amount);
 
     /// @notice A mapping L2 block number => message number => flag
     /// @notice Used to indicate that zkSync L2 -> L1 message was already processed
-    function isWithdrawalFinalized(
-        uint256 _l2BlockNumber,
-        uint256 _l2MessageIndex
-    ) external view returns (bool);
+    function isWithdrawalFinalized(uint256 _l2BlockNumber, uint256 _l2MessageIndex) external view returns (bool);
 
     /// @dev Initializes a contract bridge for later use. Expected to be used in the proxy
     /// @dev During initialization deploys L2 bridge counterpart as well as provides some factory deps for it

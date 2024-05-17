@@ -81,7 +81,7 @@ echo "==============================="
 echo "DEPLOYING USDT TOKEN"
 
 output=$(npm run deploy-usdt-token)
-formatAndAppendOrUpdate "$output" "CONTRACTS_L2_TOKEN_IMPLEMENTATION_ADDR"
+# formatAndAppendOrUpdate "$output" "CONTRACTS_L2_TOKEN_IMPLEMENTATION_ADDR"
 formatAndAppendOrUpdate "$output" "CONTRACTS_L2_TOKEN_PROXY_ADDR"
 
 cd ../l1
