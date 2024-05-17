@@ -27,6 +27,7 @@ const l2ArtifactsPath = path.join(
 // Bytecode
 const L2_BRIDGE_PROXY_BYTECODE = readBytecode(
   l2ProxyArtifactsPath,
+  // "TransparentUpgradeableProxy"
   "OssifiableProxy"
 );
 

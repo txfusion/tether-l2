@@ -4,6 +4,7 @@ import { Wallet } from "ethers";
 import { Deployer } from "./deploy";
 import {
   OssifiableProxy__factory,
+  // TransparentUpgradeableProxy__factory,
   L1ERC20Bridge__factory,
   ERC20Token__factory,
 } from "../typechain/index";
