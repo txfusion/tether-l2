@@ -29,10 +29,21 @@ export async function setup() {
 
   // L2 token
   const erc20BridgedArtifact = await deployer.loadArtifact("TetherZkSync");
-  const erc20BridgedContract = await deployer.deploy(erc20BridgedArtifact, [], {
-    gasLimit: 10_000_000,
-  });
-  const erc20BridgedImpl = await erc20BridgedContract.deployed();
+
+  const erc20Bridged = (await hre.zkUpgrades.deployProxy(
+    deployer.zkWallet,
+    erc20BridgedArtifact,
+    [L2_TOKEN_NAME, L2_TOKEN_SYMBOL, L2_TOKEN_DECIMALS, admin.address],
+    { initializer: "__TetherZkSync_init", useDeployedImplementation: true }
+    // true
+  )) as TetherZkSync;
+
+  // await erc20Bridged.waitForDeployment();
+
+  // const erc20BridgedContract = await deployer.deploy(erc20BridgedArtifact, [], {
+  //   gasLimit: 10_000_000,
+  // });
+  // const erc20BridgedImpl = await erc20BridgedContract.deployed();
 
   // proxy
   // const ossifiableProxyArtifact = await deployer.loadArtifact(
@@ -44,20 +55,20 @@ export async function setup() {
   // );
   // const erc20BridgedProxy = await erc20BridgedProxyContract.deployed();
 
-  const erc20Bridged = new Contract(
-    // erc20BridgedProxy.address,
-    erc20BridgedImpl.address,
-    erc20BridgedArtifact.abi,
-    deployer.zkWallet
-  ) as TetherZkSync;
+  // const erc20Bridged = new Contract(
+  //   // erc20BridgedProxy.address,
+  //   erc20BridgedImpl.address,
+  //   erc20BridgedArtifact.abi,
+  //   deployer.zkWallet
+  // ) as TetherZkSync;
 
-  const initTx = await erc20Bridged.__TetherZkSync_init(
-    L2_TOKEN_NAME,
-    L2_TOKEN_SYMBOL,
-    L2_TOKEN_DECIMALS,
-    admin.address
-  );
-  await initTx.wait();
+  // const initTx = await erc20Bridged.__TetherZkSync_init(
+  //   L2_TOKEN_NAME,
+  //   L2_TOKEN_SYMBOL,
+  //   L2_TOKEN_DECIMALS,
+  //   admin.address
+  // );
+  // await initTx.wait();
 
   await erc20Bridged.transferOwnership(admin.address);
 
