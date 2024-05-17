@@ -78,8 +78,8 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
     });
   });
 
-  describe("=== Blacklist ===", async () => {
-    it("Non-owners cannot blacklist", async () => {
+  describe("=== Blocklist ===", async () => {
+    it("should revert if the non-owner is trying to add users to the blocklist", async () => {
       const {
         accounts: { initialHolder, spender },
         erc20Bridged,
@@ -90,7 +90,20 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
 
-    it("Admins can blacklist", async () => {
+    it("should revert if the non-owner is trying to remove users to the blocklist", async () => {
+      const {
+        accounts: { initialHolder, spender },
+        erc20Bridged,
+      } = context;
+
+      await expect(
+        erc20Bridged
+          .connect(initialHolder)
+          .removeFromBlockedList(spender.address)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it(">>> works as expected (add to blocked list)", async () => {
       const {
         accounts: { initialHolder, admin },
         erc20Bridged,
@@ -99,8 +112,18 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
       await addToBlockedList(erc20Bridged, admin, initialHolder);
     });
 
-    describe("=== Destroy blocked funds ===", async () => {
-      it("Non-admins cannot destroy blocked funds", async () => {
+    it(">>> works as expected (remove from blocked list)", async () => {
+      const {
+        accounts: { initialHolder, admin },
+        erc20Bridged,
+      } = context;
+
+      await addToBlockedList(erc20Bridged, admin, initialHolder);
+      await removeFromBlockedList(erc20Bridged, admin, initialHolder);
+    });
+
+    describe("*** Destroy blocked funds ***", async () => {
+      it("should revert if non-admin is trying to destroy blocked funds", async () => {
         const {
           accounts: { initialHolder, admin },
           erc20Bridged,
@@ -111,7 +134,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
         ).to.be.revertedWith(`Ownable: caller is not the owner`);
       });
 
-      it("Admins cannot destroy non-blocked funds", async () => {
+      it("should revert if admins is trying to destroy non-blocked account's funds", async () => {
         const {
           accounts: { initialHolder, admin },
           erc20Bridged,
@@ -121,7 +144,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
         ).to.be.revertedWith("TetherToken: user is not blocked");
       });
 
-      it("Admins can destroy blocked funds", async () => {
+      it(">>> works as expected", async () => {
         const {
           accounts: { initialHolder, admin },
           erc20Bridged,
@@ -132,7 +155,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
     });
 
     describe("*** Transfer ***", async () => {
-      it("Blocked account cannot use transfer()", async () => {
+      it("should revert if a blocked account is trying to use transfer()", async () => {
         const {
           accounts: { initialHolder, admin },
           erc20Bridged,
@@ -148,7 +171,21 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
         ).to.be.revertedWith("TetherToken: from is blocked");
       });
 
-      it("Non-blocked account can use transfer()", async () => {
+      it("should revert if the someone is trying to use transfer() to send to Tether contract", async () => {
+        const {
+          accounts: { initialHolder },
+          erc20Bridged,
+          DEFAULT_AMOUNT,
+        } = context;
+
+        await expect(
+          erc20Bridged
+            .connect(initialHolder)
+            .transfer(erc20Bridged.address, DEFAULT_AMOUNT)
+        ).to.be.revertedWith("TetherToken: transfer to the contract address");
+      });
+
+      it(">>> works as expected (non-blocked account can use transfer())", async () => {
         const {
           accounts: { initialHolder, admin },
           erc20Bridged,
@@ -169,7 +206,23 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
     });
 
     describe("*** Transfer From ***", async () => {
-      it("Blocked account cannot use transferFrom()", async () => {
+      it("should revert if blocked account is trying to use transferFrom()", async () => {
+        const {
+          accounts: { initialHolder, admin, spender },
+          erc20Bridged,
+          DEFAULT_AMOUNT,
+        } = context;
+
+        await addToBlockedList(erc20Bridged, admin, initialHolder);
+
+        await expect(
+          erc20Bridged
+            .connect(initialHolder)
+            .transferFrom(initialHolder.address, admin.address, DEFAULT_AMOUNT)
+        ).to.be.revertedWith("Blocked: msg.sender is blocked");
+      });
+
+      it("should revert if someone is trying to use transferFrom() from the blocked account", async () => {
         const {
           accounts: { initialHolder, admin, spender },
           erc20Bridged,
@@ -191,7 +244,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
         ).to.be.revertedWith("TetherToken: from is blocked");
       });
 
-      it("Non-blocked account cannot use transferFrom() to send to Tether contract", async () => {
+      it("should revert if the someone is trying to use transferFrom() to send to Tether contract", async () => {
         const {
           accounts: { initialHolder, spender },
           erc20Bridged,
@@ -215,7 +268,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
         ).to.be.revertedWith("TetherToken: transfer to the contract address");
       });
 
-      it("Non-blocked account can use transferFrom()", async () => {
+      it(">>> works as expected (non-blocked account can use transferFrom())", async () => {
         const {
           accounts: { initialHolder, admin, spender },
           erc20Bridged,
@@ -245,6 +298,44 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
 
   describe("=== Permit ===", async () => {
     describe("*** EOA ***", async () => {
+      it("should revert if the signature's deadline has been exceeded", async () => {
+        const {
+          accounts: { initialHolder, spender },
+          erc20Bridged,
+          domain,
+        } = context;
+
+        const ownerAddr = initialHolder.address;
+        const spenderAddr = spender.address;
+        const amount = ethers.utils.parseEther("1");
+        const ownerNonce = await erc20Bridged.nonces(ownerAddr);
+        const deadline = BigNumber.from(0);
+
+        const { type, data } = getEIP712Operation(EIP712Operations.PERMIT, {
+          owner: ownerAddr,
+          spender: spenderAddr,
+          value: amount,
+          nonce: ownerNonce,
+          deadline: deadline,
+        });
+        const signature = await signTypedData(
+          domain,
+          type,
+          data,
+          initialHolder
+        );
+
+        await expect(
+          erc20Bridged["permit(address,address,uint256,uint256,bytes)"](
+            ownerAddr,
+            spenderAddr,
+            amount,
+            deadline,
+            signature
+          )
+        ).to.be.revertedWith("ERC20Permit: expired deadline");
+      });
+
       it("should revert if the signature has already been used", async () => {
         const {
           accounts: { initialHolder, spender },
@@ -307,44 +398,6 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
           erc20Bridged,
           "EIP3009Upgradeable__ErrorInvalidSignature"
         );
-      });
-
-      it("should revert if the signature's deadline has been exceeded", async () => {
-        const {
-          accounts: { initialHolder, spender },
-          erc20Bridged,
-          domain,
-        } = context;
-
-        const ownerAddr = initialHolder.address;
-        const spenderAddr = spender.address;
-        const amount = ethers.utils.parseEther("1");
-        const ownerNonce = await erc20Bridged.nonces(ownerAddr);
-        const deadline = BigNumber.from(0);
-
-        const { type, data } = getEIP712Operation(EIP712Operations.PERMIT, {
-          owner: ownerAddr,
-          spender: spenderAddr,
-          value: amount,
-          nonce: ownerNonce,
-          deadline: deadline,
-        });
-        const signature = await signTypedData(
-          domain,
-          type,
-          data,
-          initialHolder
-        );
-
-        await expect(
-          erc20Bridged["permit(address,address,uint256,uint256,bytes)"](
-            ownerAddr,
-            spenderAddr,
-            amount,
-            deadline,
-            signature
-          )
-        ).to.be.revertedWith("ERC20Permit: expired deadline");
       });
 
       it(">>> works as expected (using r,s,v)", async () => {
@@ -431,6 +484,45 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
     });
 
     describe("*** ERC1271Wallet ***", async () => {
+      it("should revert if the signature's deadline has been exceeded", async () => {
+        const {
+          accounts: { erc1271WalletOwner, spender },
+          erc1271Wallet,
+          erc20Bridged,
+          domain,
+        } = context;
+
+        const ownerAddr = erc1271Wallet.address;
+        const spenderAddr = spender.address;
+        const amount = ethers.utils.parseEther("1");
+        const ownerNonce = await erc20Bridged.nonces(ownerAddr);
+        const deadline = BigNumber.from(0);
+
+        const { type, data } = getEIP712Operation(EIP712Operations.PERMIT, {
+          owner: ownerAddr,
+          spender: spenderAddr,
+          value: amount,
+          nonce: ownerNonce,
+          deadline: deadline,
+        });
+        const signature = await signTypedData(
+          domain,
+          type,
+          data,
+          erc1271WalletOwner
+        );
+
+        await expect(
+          erc20Bridged["permit(address,address,uint256,uint256,bytes)"](
+            ownerAddr,
+            spenderAddr,
+            amount,
+            deadline,
+            signature
+          )
+        ).to.be.revertedWith("ERC20Permit: expired deadline");
+      });
+
       it("should revert if the signature has already been used", async () => {
         const {
           accounts: { erc1271WalletOwner, spender },
@@ -498,45 +590,6 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
           erc20Bridged,
           "EIP3009Upgradeable__ErrorInvalidSignature"
         );
-      });
-
-      it("should revert if the signature's deadline has been exceeded", async () => {
-        const {
-          accounts: { erc1271WalletOwner, spender },
-          erc1271Wallet,
-          erc20Bridged,
-          domain,
-        } = context;
-
-        const ownerAddr = erc1271Wallet.address;
-        const spenderAddr = spender.address;
-        const amount = ethers.utils.parseEther("1");
-        const ownerNonce = await erc20Bridged.nonces(ownerAddr);
-        const deadline = BigNumber.from(0);
-
-        const { type, data } = getEIP712Operation(EIP712Operations.PERMIT, {
-          owner: ownerAddr,
-          spender: spenderAddr,
-          value: amount,
-          nonce: ownerNonce,
-          deadline: deadline,
-        });
-        const signature = await signTypedData(
-          domain,
-          type,
-          data,
-          erc1271WalletOwner
-        );
-
-        await expect(
-          erc20Bridged["permit(address,address,uint256,uint256,bytes)"](
-            ownerAddr,
-            spenderAddr,
-            amount,
-            deadline,
-            signature
-          )
-        ).to.be.revertedWith("ERC20Permit: expired deadline");
       });
 
       it(">>> works as expected (using r,s,v)", async () => {
@@ -730,7 +783,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
         );
       });
 
-      it("should revert if the signature has already been used", async () => {
+      it("should revert if the nonce has already been used", async () => {
         const {
           accounts: { initialHolder, spender },
           erc20Bridged,
@@ -738,7 +791,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
           DEFAULT_AMOUNT,
         } = context;
 
-        const { from, to, value, nonce, validAfter, validBefore, signature } =
+        const { nonce, validAfter, validBefore, signature } =
           await validTransferWithAuthorization(
             initialHolder,
             spender,
@@ -1010,7 +1063,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
         );
       });
 
-      it("should revert if the signature has already been used", async () => {
+      it("should revert if the nonce has already been used", async () => {
         const {
           accounts: { erc1271WalletOwner, spender },
           erc1271Wallet,
@@ -1354,7 +1407,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
         );
       });
 
-      it("should revert if the signature has already been used", async () => {
+      it("should revert if the nonce has already been used", async () => {
         const {
           accounts: { initialHolder, spender },
           erc20Bridged,
@@ -1695,7 +1748,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
         );
       });
 
-      it("should revert if the signature has already been used", async () => {
+      it("should revert if the nonce has already been used", async () => {
         const {
           accounts: { erc1271WalletOwner, spender },
           erc1271Wallet,
@@ -2220,10 +2273,13 @@ const addToBlockedList = async (
   admin: Wallet,
   toBlocklist: Wallet
 ) => {
-  const freezeTx = await erc20
+  const blockTx = await erc20
     .connect(admin)
     .addToBlockedList(toBlocklist.address);
-  await freezeTx.wait();
+
+  expect(blockTx).to.emit(erc20, "BlockPlaced").withArgs(toBlocklist);
+
+  await blockTx.wait();
 
   assert.deepEqual(
     await erc20.isBlocked(toBlocklist.address),
@@ -2235,15 +2291,20 @@ const addToBlockedList = async (
 const removeFromBlockedList = async (
   erc20: ethers.Contract,
   admin: Wallet,
-  toBlocklist: Wallet
+  toRemoveFromBlocklist: Wallet
 ) => {
-  const freezeTx = await erc20
+  const unblockTx = await erc20
     .connect(admin)
-    .removeFromBlockedList(toBlocklist.address);
-  await freezeTx.wait();
+    .removeFromBlockedList(toRemoveFromBlocklist.address);
+
+  expect(unblockTx)
+    .to.emit(erc20, "BlockReleased")
+    .withArgs(toRemoveFromBlocklist);
+
+  await unblockTx.wait();
 
   assert.deepEqual(
-    await erc20.isBlocked(toBlocklist.address),
+    await erc20.isBlocked(toRemoveFromBlocklist.address),
     false,
     "Address was not removed from the blocklist"
   );
@@ -2256,12 +2317,18 @@ const blockAndDestroyBlockedFunds = async (
 ) => {
   await addToBlockedList(erc20, admin, toDestroy);
 
-  const burnTx = await erc20
+  const balance = await erc20.balanceOf(toDestroy.address);
+
+  const destroyTx = await erc20
     .connect(admin)
     .destroyBlockedFunds(toDestroy.address);
-  await burnTx.wait();
 
-  // User balance should be 0
+  expect(destroyTx)
+    .to.emit(erc20, "DestroyedBlockedFunds")
+    .withArgs(toDestroy.address, balance);
+
+  await destroyTx.wait();
+
   assert.isTrue(
     (await erc20.balanceOf(toDestroy.address)).eq(0),
     "Tokens were not destroyed"
@@ -2302,8 +2369,6 @@ const validPermit = async (
   ](ownerAddr, spenderAddr, amount, deadline, signature);
 
   expect(permitTx)
-    // .to.emit(erc20Bridged, "EIP3009Upgradeable__AuthorizationUsed")
-    // .withArgs(ownerAddr, ownerNonce)
     .to.emit(erc20Bridged, "Approval")
     .withArgs(ownerAddr, spenderAddr, amount);
 
@@ -2416,19 +2481,19 @@ const validReceiveWithAuthorization = async (
   );
   const signature = await signTypedData(domain, type, data, from);
 
-  const transferTx = await erc20Bridged
+  const receiveTx = await erc20Bridged
     .connect(to)
     [
       "receiveWithAuthorization(address,address,uint256,uint256,uint256,bytes32,bytes)"
     ](fromAddr, toAddr, amount, validAfter, validBefore, fromNonce, signature);
 
-  expect(transferTx)
+  expect(receiveTx)
     .to.emit(erc20Bridged, "EIP3009Upgradeable__AuthorizationUsed")
     .withArgs(from.address, fromNonce)
     .to.emit(erc20Bridged, "Transfer")
     .withArgs(from.address, to.address, amount);
 
-  await transferTx.wait();
+  await receiveTx.wait();
 
   return {
     from,
