@@ -6,6 +6,7 @@
     "deploy-governance-bridge": "hardhat run ./scripts/deploy-governance-bridge.ts",
     "deploy-usdt-token": "hardhat run ./scripts/deploy-usdt-token.ts",
     "upgrade-usdt-token": "hardhat run ./scripts/upgrade-usdt-token.ts",
+    "connect-token-to-bridge": "hardhat run ./scripts/connect-token-to-bridge.ts",
     "verify-l2-bridge": "hardhat run ./scripts/verify-l2-bridge.ts",
     "test": "hardhat test ./test/*.test.ts",
     "test:unit": "hardhat test ./test/*.unit.test.ts",

@@ -3,12 +3,11 @@ import { web3Provider } from "./utils/utils";
 import { Wallet } from "ethers";
 import { Deployer } from "./deploy";
 import {
+  OssifiableProxy__factory,
   L1ERC20Bridge__factory,
   ERC20Token__factory,
-  TransparentUpgradeableProxy__factory,
 } from "../typechain/index";
 import { ERC20_BRIDGED_CONSTANTS } from "./utils/constants";
-import { OssifiableProxy__factory } from "../../l2/typechain";
 
 const PRIVATE_KEY = process.env.PRIVATE_KEY as string;
 const IS_LOCAL = (process.env.NODE_ENV as string) === "local";

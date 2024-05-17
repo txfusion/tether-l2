@@ -36,15 +36,15 @@ contract TetherZkSync is Initializable, TetherTokenV2, AccessControlUpgradeable 
     }
 
     ////////////////////
-    //  Initializers  //
-    ////////////////////
+    //  Initializer   //
+    ///////////////////
     function __TetherZkSync_init(string memory _name, string memory _symbol, uint8 _decimals) external initializer {
         __TetherToken__init(_name, _symbol, _decimals);
         __EIP3009Upgradeable_init(_name);
     }
 
-    function __TetherZkSync_init_v2(address newBridge_) external reinitializer(2) onlyOwner {
-        _setBridge(newBridge_);
+    function __TetherZkSync_init_v2(address bridge_) external reinitializer(2) onlyOwner {
+        _setBridge(bridge_);
     }
 
     ///////////////////////////////////////

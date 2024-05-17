@@ -32,7 +32,13 @@ import {BridgingManager} from "../../common/BridgingManager.sol";
 /// @notice Smart contract that allows depositing USDT tokens from Ethereum to zkSync v2.0
 /// @dev It is standard implementation of USDT Bridge that can be used as a reference
 /// for any other custom token bridges.
-contract L1ERC20Bridge is Initializable, IL1ERC20Bridge, BridgeableTokensUpgradable, BridgingManager, ReentrancyGuard {
+contract L1ERC20Bridge is
+    Initializable,
+    IL1ERC20Bridge,
+    BridgeableTokensUpgradable,
+    BridgingManager,
+    ReentrancyGuard
+{
     using SafeERC20 for IERC20;
 
     /// @dev zkSync smart contract that is used to operate with L2 via asynchronous L2 <-> L1 communication
