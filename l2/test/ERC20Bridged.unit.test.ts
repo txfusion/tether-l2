@@ -18,7 +18,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
     context = await setup();
   });
 
-  describe.only("=== Getters ===", async () => {
+  describe("=== Getters ===", async () => {
     it("*** Bridge ***", async () => {
       const {
         accounts: { admin },

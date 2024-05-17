@@ -5,7 +5,7 @@ pragma solidity ^0.8.10;
 import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
-import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import {MessageHashUtils} from "./MessageHashUtils.sol";
 
 abstract contract EIP3009Upgradeable is Initializable, EIP712Upgradeable {
     //////////////////
