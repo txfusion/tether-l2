@@ -19,7 +19,7 @@ export const SYSTEM_CONFIG_CONSTANTS = {
   CHAIND_ID: 270,
 };
 
-export const ERC20_BRIDGED_CONSTANTS = {
+export const L1_ERC20_BRIDGED_CONSTANTS = {
   NAME: "Tether USD",
   SYMBOL: "USDT",
   DECIMALS: 6,

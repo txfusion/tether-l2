@@ -12,6 +12,7 @@ import {
   L2_TOKEN_DECIMALS,
   L2_TOKEN_SINGING_DOMAIN_VERSION,
 } from "../utils/constants";
+import { TetherZkSync } from "../../typechain";
 
 const INITIAL_BALANCE = ethers.utils.parseEther("10");
 
@@ -19,47 +20,29 @@ export async function setup() {
   const provider = new Provider(PROVIDER_URL);
 
   const deployerWallet = new Wallet(richWallet[0].privateKey, provider);
-  const governor = new Wallet(richWallet[1].privateKey, provider);
-  const adminAddress = governor.address;
+  const admin = new Wallet(richWallet[1].privateKey, provider);
   const initialHolder = new Wallet(richWallet[2].privateKey, provider);
   const spender = new Wallet(richWallet[3].privateKey, provider);
   const erc1271WalletOwner = new Wallet(richWallet[4].privateKey, provider);
 
   const deployer = new Deployer(hre, deployerWallet);
 
-  const ossifiableProxyArtifact = await deployer.loadArtifact(
-    "OssifiableProxy"
-  );
-
   // L2 token
-  const erc20BridgedArtifact = await deployer.loadArtifact(
-    "ERC20BridgedUpgradeable"
-  );
-  const erc20BridgedContract = await deployer.deploy(erc20BridgedArtifact, []);
-  const erc20BridgedImpl = await erc20BridgedContract.deployed();
+  const erc20BridgedArtifact = await deployer.loadArtifact("TetherZkSync");
 
-  // proxy
-  const erc20BridgedProxyContract = await deployer.deploy(
-    ossifiableProxyArtifact,
-    [erc20BridgedImpl.address, adminAddress, "0x"]
-  );
-  const erc20BridgedProxy = await erc20BridgedProxyContract.deployed();
+  const erc20Bridged = (await hre.zkUpgrades.deployProxy(
+    deployer.zkWallet,
+    erc20BridgedArtifact,
+    [L2_TOKEN_NAME, L2_TOKEN_SYMBOL, L2_TOKEN_DECIMALS],
+    { initializer: "__TetherZkSync_init" },
+    true
+  )) as TetherZkSync;
 
-  const erc20Bridged = new Contract(
-    erc20BridgedProxy.address,
-    erc20BridgedArtifact.abi,
-    deployer.zkWallet
-  );
+  await erc20Bridged
+    .connect(deployer.zkWallet)
+    .__TetherZkSync_init_v2(admin.address);
 
-  const initTx = await erc20Bridged[
-    "__ERC20BridgedUpgradeable_init(string,string,uint8,address)"
-  ](L2_TOKEN_NAME, L2_TOKEN_SYMBOL, L2_TOKEN_DECIMALS, adminAddress);
-  await initTx.wait();
-
-  const initV2Tx = await erc20Bridged[
-    "__ERC20BridgedUpgradeable_init_v2(address)"
-  ](deployerWallet.address);
-  await initV2Tx.wait();
+  await erc20Bridged.transferOwnership(admin.address);
 
   const erc1271WalletArtifact = await deployer.loadArtifact(
     "ERC1271WalletStub"
@@ -72,30 +55,35 @@ export async function setup() {
 
   // mint initial balance to initialHolder wallet
   await (
-    await erc20Bridged.bridgeMint(initialHolder.address, INITIAL_BALANCE)
+    await erc20Bridged
+      .connect(admin)
+      .bridgeMint(initialHolder.address, INITIAL_BALANCE)
   ).wait();
 
   // mint initial balance to smart contract wallet
   await (
-    await erc20Bridged.bridgeMint(
-      erc1271WalletContract.address,
-      INITIAL_BALANCE
-    )
+    await erc20Bridged
+      .connect(admin)
+      .bridgeMint(erc1271WalletContract.address, INITIAL_BALANCE)
   ).wait();
 
-  const ADDRESS_FREEZER_ROLE = await erc20Bridged.ADDRESS_FREEZER_ROLE();
-  const ADDRESS_BURNER_ROLE = await erc20Bridged.ADDRESS_BURNER_ROLE();
+  const BRIDGE_ROLE = await erc20Bridged.BRIDGE_ROLE();
 
   return {
     accounts: {
       deployerWallet,
-      governor,
+      admin,
       initialHolder,
       spender,
       erc1271WalletOwner,
     },
     erc20Bridged,
     erc1271Wallet: erc1271WalletContract,
+    erc20Metadata: {
+      name: L2_TOKEN_NAME,
+      symbol: L2_TOKEN_SYMBOL,
+      decimals: L2_TOKEN_DECIMALS,
+    },
     domain: {
       name: L2_TOKEN_NAME,
       version: L2_TOKEN_SINGING_DOMAIN_VERSION,
@@ -104,12 +92,9 @@ export async function setup() {
     },
     gasLimit: 10_000_000,
     roles: {
-      ADDRESS_FREEZER_ROLE: ethers.utils.hexlify(
-        BigNumber.from(ADDRESS_FREEZER_ROLE)
-      ),
-      ADDRESS_BURNER_ROLE: ethers.utils.hexlify(
-        BigNumber.from(ADDRESS_BURNER_ROLE)
-      ),
+      BRIDGE_ROLE: ethers.utils.hexlify(BigNumber.from(BRIDGE_ROLE)),
     },
+    DEFAULT_AMOUNT: INITIAL_BALANCE.div(10),
+    provider,
   };
 }

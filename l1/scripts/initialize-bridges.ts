@@ -1,21 +1,21 @@
+import * as path from "path";
+import { Wallet, utils } from "ethers";
+
+import { Deployer } from "./deploy";
 import {
   REQUIRED_L2_GAS_PRICE_PER_PUBDATA,
   getNumberFromEnv,
   readBytecode,
   web3Provider,
 } from "./utils/utils";
-import { Wallet } from "ethers";
-import { formatUnits } from "ethers/lib/utils";
-import { Deployer } from "./deploy";
-
-import * as path from "path";
 
 const provider = web3Provider();
 
 // Artifacts
-const commonArtifactsPath = path.join(
+const l2ProxyArtifactsPath = path.join(
   path.resolve(__dirname, "../.."),
-  "l2/artifacts-zk/common"
+  // "l2/artifacts-zk/@openzeppelin/contracts/proxy/transparent"
+  "l2/artifacts-zk/common/proxy"
 );
 
 const l2ArtifactsPath = path.join(
@@ -23,11 +23,10 @@ const l2ArtifactsPath = path.join(
   "l2/artifacts-zk/l2/contracts"
 );
 
-const l2ProxyArtifactsPath = path.join(commonArtifactsPath, "proxy");
-
 // Bytecode
 const L2_BRIDGE_PROXY_BYTECODE = readBytecode(
   l2ProxyArtifactsPath,
+  // "TransparentUpgradeableProxy"
   "OssifiableProxy"
 );
 
@@ -49,7 +48,7 @@ async function main() {
   const gasPrice = await provider.getGasPrice();
 
   console.log(`Using deployer wallet: ${deployWallet.address}`);
-  console.log(`Using gas price: ${formatUnits(gasPrice, "gwei")} gwei`);
+  console.log(`Using gas price: ${utils.formatUnits(gasPrice, "gwei")} gwei`);
 
   const deployer = new Deployer({
     deployWallet,

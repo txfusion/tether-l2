@@ -1,9 +1,10 @@
-import { web3Provider } from "./utils/utils";
+import { Wallet as ZkSyncWallet, Provider, Contract } from "zksync-ethers";
 import { Wallet } from "ethers";
 import { formatUnits } from "ethers/lib/utils";
+
+import { web3Provider } from "./utils/utils";
 import { Deployer } from "./deploy";
 
-import { Wallet as ZkSyncWallet, Provider, Contract } from "zksync-ethers";
 import { L2ERC20Bridge__factory } from "../../l2/typechain";
 
 const PRIVATE_KEY = process.env.PRIVATE_KEY as string;
@@ -41,8 +42,6 @@ async function main() {
   console.log(`Using L2 Bridge: ${l2Bridge.address}`);
 
   // get bytecode for roles
-  const DEFAULT_ADMIN_ROLE =
-    "0x0000000000000000000000000000000000000000000000000000000000000000";
   const DEPOSITS_ENABLER_ROLE =
     "0x4b43b36766bde12c5e9cbbc37d15f8d1f769f08f54720ab370faeb4ce893753a";
   const DEPOSITS_DISABLER_ROLE =

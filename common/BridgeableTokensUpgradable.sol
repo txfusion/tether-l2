@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.10;
+pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
@@ -14,10 +14,7 @@ contract BridgeableTokensUpgradable is Initializable {
 
     /// @param l1Token_ Address of the bridged token in the L1 chain
     /// @param l2Token_ Address of the token minted on the L2 chain when token bridged
-    function __BridgeableTokens_init(
-        address l1Token_,
-        address l2Token_
-    ) internal onlyInitializing {
+    function __BridgeableTokens_init(address l1Token_, address l2Token_) internal onlyInitializing {
         l1Token = l1Token_;
         l2Token = l2Token_;
     }

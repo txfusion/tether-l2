@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.10;
+pragma solidity 0.8.20;
 
 import {L2CrossDomainEnabled} from "./L2CrossDomainEnabled.sol";
-import {IERC20BridgedUpgradeable} from "./interfaces/IERC20BridgedUpgradeable.sol";
+import {IERC20Bridged} from "../../common/interfaces/IERC20Bridged.sol";
 
-import {BridgingManager} from "../../common/BridgingManager.sol";
+import {BridgingManagerUpgradeable} from "../../common/BridgingManagerUpgradeable.sol";
 import {BridgeableTokensUpgradable} from "../../common/BridgeableTokensUpgradable.sol";
 import {IL1ERC20Bridge} from "../../common/interfaces/IL1ERC20Bridge.sol";
 import {IL2ERC20Bridge} from "../../common/interfaces/IL2ERC20Bridge.sol";
@@ -15,7 +15,7 @@ import {IL2ERC20Bridge} from "../../common/interfaces/IL2ERC20Bridge.sol";
 ///     Additionally, adds the methods for bridging management: enabling and disabling withdrawals/deposits
 contract L2ERC20Bridge is
     IL2ERC20Bridge,
-    BridgingManager,
+    BridgingManagerUpgradeable,
     BridgeableTokensUpgradable,
     L2CrossDomainEnabled
 {
@@ -34,17 +34,16 @@ contract L2ERC20Bridge is
     /// @param _l2Token Address of the token minted on the L2 chain when token bridged
     /// @param _admin Address of the account to grant the DEFAULT_ADMIN_ROLE
     /// @dev The function can only be called once during contract deployment due to the 'initializer' modifier.
-    function initialize(
-        address _l1TokenBridge,
-        address _l1Token,
-        address _l2Token,
-        address _admin
-    ) external initializer onlyNonZeroAccount(_l1TokenBridge) {
+    function initialize(address _l1TokenBridge, address _l1Token, address _l2Token, address _admin)
+        external
+        initializer
+        onlyNonZeroAccount(_l1TokenBridge)
+    {
         require(_l1Token != address(0), "L1 token address cannot be zero");
         require(_l2Token != address(0), "L2 token address cannot be zero");
 
         __BridgeableTokens_init(_l1Token, _l2Token);
-        __BridgingManager_init(_admin);
+        __BridgingManagerUpgradeable_init(_admin);
 
         l1Bridge = _l1TokenBridge;
     }
@@ -66,24 +65,21 @@ contract L2ERC20Bridge is
     {
         require(msg.value == 0, "Value should be 0 for ERC20 bridge");
 
-        IERC20BridgedUpgradeable(l2Token).bridgeMint(_l2Receiver, _amount);
+        IERC20Bridged(l2Token).bridgeMint(_l2Receiver, _amount);
 
         emit FinalizeDeposit(_l1Sender, _l2Receiver, l2Token, _amount);
     }
 
     /// @inheritdoc IL2ERC20Bridge
-    function withdraw(
-        address _l1Receiver,
-        address _l2Token,
-        uint256 _amount
-    ) external override whenWithdrawalsEnabled onlySupportedL2Token(_l2Token) {
-        IERC20BridgedUpgradeable(l2Token).bridgeBurn(msg.sender, _amount);
+    function withdraw(address _l1Receiver, address _l2Token, uint256 _amount)
+        external
+        override
+        whenWithdrawalsEnabled
+        onlySupportedL2Token(_l2Token)
+    {
+        IERC20Bridged(l2Token).bridgeBurn(msg.sender, _amount);
 
-        bytes memory message = _getL1WithdrawMessage(
-            _l1Receiver,
-            l1Token,
-            _amount
-        );
+        bytes memory message = _getL1WithdrawMessage(_l1Receiver, l1Token, _amount);
         sendCrossDomainMessage(message);
 
         emit WithdrawalInitiated(msg.sender, _l1Receiver, _l2Token, _amount);
@@ -93,31 +89,21 @@ contract L2ERC20Bridge is
     /// @param _to Address that will receive tokens on L1 after finalizeWithdrawal
     /// @param _l1Token The address of the token that was locked on the L1
     /// @param _amount The total amount of tokens to be withdrawn
-    function _getL1WithdrawMessage(
-        address _to,
-        address _l1Token,
-        uint256 _amount
-    ) internal pure returns (bytes memory) {
-        return
-            abi.encodePacked(
-                IL1ERC20Bridge.finalizeWithdrawal.selector,
-                _to,
-                _l1Token,
-                _amount
-            );
+    function _getL1WithdrawMessage(address _to, address _l1Token, uint256 _amount)
+        internal
+        pure
+        returns (bytes memory)
+    {
+        return abi.encodePacked(IL1ERC20Bridge.finalizeWithdrawal.selector, _to, _l1Token, _amount);
     }
 
     /// @inheritdoc IL2ERC20Bridge
-    function l1TokenAddress(
-        address _l2Token
-    ) public view override returns (address l1TokenAddr) {
+    function l1TokenAddress(address _l2Token) public view override returns (address l1TokenAddr) {
         l1TokenAddr = _l2Token == l2Token ? l1Token : address(0);
     }
 
     /// @inheritdoc IL2ERC20Bridge
-    function l2TokenAddress(
-        address _l1Token
-    ) public view override returns (address l2TokenAddr) {
+    function l2TokenAddress(address _l1Token) public view override returns (address l2TokenAddr) {
         l2TokenAddr = _l1Token == l1Token ? l2Token : address(0);
     }
 }

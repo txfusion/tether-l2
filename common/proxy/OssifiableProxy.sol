@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2022 Lido <info@lido.fi>
+// SPDX-License-Identifier: GPL-3.0
 
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.20;
 
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {StorageSlot} from "@openzeppelin/contracts/utils/StorageSlot.sol";
@@ -14,11 +15,7 @@ contract OssifiableProxy is ERC1967Proxy {
     /// @param admin_ Address of the admin of the proxy
     /// @param data_ Data used in a delegate call to implementation. The delegate call will be
     ///     skipped if the data is empty bytes
-    constructor(
-        address implementation_,
-        address admin_,
-        bytes memory data_
-    ) ERC1967Proxy(implementation_, data_) {
+    constructor(address implementation_, address admin_, bytes memory data_) ERC1967Proxy(implementation_, data_) {
         _changeAdmin(admin_);
     }
 
@@ -64,11 +61,10 @@ contract OssifiableProxy is ERC1967Proxy {
     /// @param setupCalldata_ Data for the setup call. The call is skipped if setupCalldata_ is
     ///     empty and forceCall_ is false
     /// @param forceCall_ Forces make delegate call to the implementation even with empty data_
-    function proxy__upgradeToAndCall(
-        address newImplementation_,
-        bytes memory setupCalldata_,
-        bool forceCall_
-    ) external onlyAdmin {
+    function proxy__upgradeToAndCall(address newImplementation_, bytes memory setupCalldata_, bool forceCall_)
+        external
+        onlyAdmin
+    {
         _upgradeToAndCall(newImplementation_, setupCalldata_, forceCall_);
     }
 

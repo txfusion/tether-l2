@@ -1,14 +1,10 @@
-import * as hre from "hardhat";
-import { web3Provider } from "./utils/utils";
+import { Wallet as ZkSyncWallet, Provider } from "zksync-ethers";
 import { Wallet } from "ethers";
 import { formatUnits } from "ethers/lib/utils";
+
 import { Deployer } from "./deploy";
+import { web3Provider } from "./utils/utils";
 
-// typechain
-import { L1ERC20Bridge__factory } from "../typechain";
-
-// L2
-import { Wallet as ZkSyncWallet, Provider } from "zksync-ethers";
 import { L2ERC20Bridge__factory } from "../../l2/typechain";
 
 const PRIVATE_KEY = process.env.PRIVATE_KEY as string;

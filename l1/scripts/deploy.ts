@@ -46,18 +46,11 @@ export function deployedAddressesFromEnv(): DeployedAddresses {
 
 export class Deployer {
   public addresses: DeployedAddresses;
-  private deployWallet: Wallet;
   private verbose: boolean;
-  private governorAddress: string;
 
   constructor(config: DeployerConfig) {
-    this.deployWallet = config.deployWallet;
     this.verbose = config.verbose != null ? config.verbose : false;
     this.addresses = deployedAddressesFromEnv();
-    this.governorAddress =
-      config.governorAddress != null
-        ? config.governorAddress
-        : this.deployWallet.address;
   }
 
   public zkSyncContract(signerOrProvider: Signer | providers.Provider) {

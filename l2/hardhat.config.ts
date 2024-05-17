@@ -23,7 +23,7 @@ const config: HardhatUserConfig = {
     },
   },
   solidity: {
-    version: "0.8.13",
+    version: "0.8.20",
     settings: {
       optimizer: {
         enabled: true,
@@ -33,13 +33,13 @@ const config: HardhatUserConfig = {
   },
   defaultNetwork: "zkSyncNetwork",
   networks: {
-    goerli: {
+    sepolia: {
       zksync: false,
       url: L1_RPC_URL,
     },
     zkSyncNetwork: {
       zksync: true,
-      ethNetwork: "goerli",
+      ethNetwork: "sepolia",
       url: L2_RPC_URL,
       verifyURL: process.env.ZKSYNC_VERIFY_URL as string,
     },

@@ -7,6 +7,7 @@ import {
   zkSyncUrl,
   readInterface,
 } from "../utils/utils";
+import { L2_ERC20_BRIDGED_CONSTANTS } from "../../../l2/scripts/utils/constants";
 
 const l1ArtifactsPath = path.join(
   path.resolve(__dirname, "../.."),
@@ -34,7 +35,7 @@ const L1_TOKEN_INTERFACE = readInterface(
 const L2_TOKEN_ADDR = getAddressFromEnv("CONTRACTS_L2_TOKEN_PROXY_ADDR");
 const L2_TOKEN_INTERFACE = readInterface(
   path.join(l2ArtifactsPath, "token"),
-  "ERC20BridgedUpgradeable"
+  L2_ERC20_BRIDGED_CONSTANTS.CONTRACT_NAME
 );
 
 const AMOUNT_TO_DEPOSIT = ethers.utils.parseEther("0.001");

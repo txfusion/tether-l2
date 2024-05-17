@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.10;
+pragma solidity 0.8.20;
 
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 /// @author psirex
 /// @notice Contains administrative methods to retrieve and control the state of the bridging
-contract BridgingManager is Initializable, AccessControlUpgradeable {
+contract BridgingManagerUpgradeable is Initializable, AccessControlUpgradeable {
     /// @dev Stores the state of the bridging
     /// @param isInitialized Shows whether the contract is initialized or not
     /// @param isDepositsEnabled Stores the state of the deposits
@@ -18,23 +18,19 @@ contract BridgingManager is Initializable, AccessControlUpgradeable {
         bool isWithdrawalsEnabled;
     }
 
-    bytes32 public constant DEPOSITS_ENABLER_ROLE =
-        keccak256("BridgingManager.DEPOSITS_ENABLER_ROLE");
-    bytes32 public constant DEPOSITS_DISABLER_ROLE =
-        keccak256("BridgingManager.DEPOSITS_DISABLER_ROLE");
-    bytes32 public constant WITHDRAWALS_ENABLER_ROLE =
-        keccak256("BridgingManager.WITHDRAWALS_ENABLER_ROLE");
+    bytes32 public constant DEPOSITS_ENABLER_ROLE = keccak256("BridgingManagerUpgradeable.DEPOSITS_ENABLER_ROLE");
+    bytes32 public constant DEPOSITS_DISABLER_ROLE = keccak256("BridgingManagerUpgradeable.DEPOSITS_DISABLER_ROLE");
+    bytes32 public constant WITHDRAWALS_ENABLER_ROLE = keccak256("BridgingManagerUpgradeable.WITHDRAWALS_ENABLER_ROLE");
     bytes32 public constant WITHDRAWALS_DISABLER_ROLE =
-        keccak256("BridgingManager.WITHDRAWALS_DISABLER_ROLE");
+        keccak256("BridgingManagerUpgradeable.WITHDRAWALS_DISABLER_ROLE");
 
     /// @dev The location of the slot with State
-    bytes32 private constant STATE_SLOT =
-        bytes32(uint256(keccak256("BridgingManager.bridgingState")) - 1);
+    bytes32 private constant STATE_SLOT = bytes32(uint256(keccak256("BridgingManagerUpgradeable.bridgingState")) - 1);
 
     /// @notice Initializes the contract to grant DEFAULT_ADMIN_ROLE to the admin_ address
     /// @dev This method might be called only once
     /// @param admin_ Address of the account to grant the DEFAULT_ADMIN_ROLE
-    function __BridgingManager_init(address admin_) internal onlyInitializing {
+    function __BridgingManagerUpgradeable_init(address admin_) internal onlyInitializing {
         State storage s = _loadState();
         if (s.isInitialized) {
             revert ErrorAlreadyInitialized();
@@ -44,7 +40,7 @@ contract BridgingManager is Initializable, AccessControlUpgradeable {
         s.isInitialized = true;
         s.isDepositsEnabled = true;
         s.isWithdrawalsEnabled = true;
-        emit InitializedBridgingManager(admin_);
+        emit InitializedBridgingManagerUpgradeable(admin_);
     }
 
     /// @notice Returns whether the contract is initialized or not
@@ -72,11 +68,7 @@ contract BridgingManager is Initializable, AccessControlUpgradeable {
     }
 
     /// @notice Disables the deposits if they aren't disabled yet
-    function disableDeposits()
-        external
-        whenDepositsEnabled
-        onlyRole(DEPOSITS_DISABLER_ROLE)
-    {
+    function disableDeposits() external whenDepositsEnabled onlyRole(DEPOSITS_DISABLER_ROLE) {
         _loadState().isDepositsEnabled = false;
         emit DepositsDisabled(msg.sender);
     }
@@ -91,11 +83,7 @@ contract BridgingManager is Initializable, AccessControlUpgradeable {
     }
 
     /// @notice Disables the withdrawals if they aren't disabled yet
-    function disableWithdrawals()
-        external
-        whenWithdrawalsEnabled
-        onlyRole(WITHDRAWALS_DISABLER_ROLE)
-    {
+    function disableWithdrawals() external whenWithdrawalsEnabled onlyRole(WITHDRAWALS_DISABLER_ROLE) {
         _loadState().isWithdrawalsEnabled = false;
         emit WithdrawalsDisabled(msg.sender);
     }
@@ -128,7 +116,7 @@ contract BridgingManager is Initializable, AccessControlUpgradeable {
     event DepositsDisabled(address indexed disabler);
     event WithdrawalsEnabled(address indexed enabler);
     event WithdrawalsDisabled(address indexed disabler);
-    event InitializedBridgingManager(address indexed admin);
+    event InitializedBridgingManagerUpgradeable(address indexed admin);
 
     error ErrorDepositsEnabled();
     error ErrorDepositsDisabled();

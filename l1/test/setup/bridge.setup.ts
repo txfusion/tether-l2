@@ -3,7 +3,7 @@ import { Wallet } from "ethers";
 import { Provider, Wallet as ZkWallet } from "zksync-ethers";
 import { L1ERC20Bridge__factory, ERC20Token__factory } from "../../typechain";
 import {
-  ERC20BridgedUpgradeable__factory,
+  TetherZkSync__factory,
   L2ERC20Bridge__factory,
 } from "../../../l2/typechain";
 import { ZKSYNC_ADDRESSES } from "./../utils/utils";
@@ -35,9 +35,7 @@ export async function setup() {
       },
     },
     l2: {
-      l2Token: new ERC20BridgedUpgradeable__factory(deployer).attach(
-        l2.l2Token
-      ),
+      l2Token: new TetherZkSync__factory(deployer).attach(l2.l2Token),
       l2Bridge: new L2ERC20Bridge__factory(deployer).attach(l2.l2Bridge),
       accounts: {
         deployer,
