@@ -6,17 +6,17 @@ import {
   L1ERC20Bridge__factory,
   TransparentUpgradeableProxy__factory,
   ZkSyncStub__factory,
-} from "../../typechain";
-import {
   EmptyContractStub__factory,
   ERC20BridgedStub__factory,
+  OssifiableProxy__factory,
 } from "../../typechain";
 import { L2ERC20BridgeStub__factory } from "../../../l2/typechain";
 import { readBytecode } from "../../scripts/utils/utils";
 
 const l2ProxyArtifactsPath = path.join(
   path.resolve(__dirname, "../../.."),
-  "l2/artifacts-zk/@openzeppelin/contracts/proxy/transparent"
+  "l2/artifacts-zk/common/proxy"
+  // "l2/artifacts-zk/@openzeppelin/contracts/proxy/transparent"
 );
 
 // zksync/l2/artifacts-zk/l2/contracts
@@ -27,7 +27,8 @@ const l2ArtifactsPath = path.join(
 
 const L2_BRIDGE_PROXY_BYTECODE = readBytecode(
   l2ProxyArtifactsPath,
-  "TransparentUpgradeableProxy"
+  "OssifiableProxy"
+  // "TransparentUpgradeableProxy"
 );
 
 const L2_BRIDGE_STUB_BYTECODE = readBytecode(
@@ -70,7 +71,8 @@ export async function setup() {
   const requiredValueToInitializeBridge =
     await zkSyncStub.l2TransactionBaseCost(0, 0, 0);
 
-  const l1Erc20BridgeProxy = await new TransparentUpgradeableProxy__factory(
+  // const l1Erc20BridgeProxy = await new TransparentUpgradeableProxy__factory(
+  const l1Erc20BridgeProxy = await new OssifiableProxy__factory(
     deployer
   ).deploy(l1Erc20BridgeImpl.address, governor.address, "0x");
 

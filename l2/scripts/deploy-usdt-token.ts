@@ -2,7 +2,7 @@ import * as hre from "hardhat";
 import { Deployer } from "@matterlabs/hardhat-zksync-deploy";
 import { Wallet } from "zksync-ethers";
 
-import { ERC20_BRIDGED_CONSTANTS, PRIVATE_KEY } from "./utils/constants";
+import { L2_ERC20_BRIDGED_CONSTANTS, PRIVATE_KEY } from "./utils/constants";
 import { verify } from "./utils/verify";
 
 async function main() {
@@ -11,11 +11,11 @@ async function main() {
   console.log("~~~ Deploying Proxy ~~~");
   const erc20Bridged = await hre.zkUpgrades.deployProxy(
     deployer.zkWallet,
-    await deployer.loadArtifact(ERC20_BRIDGED_CONSTANTS.CONTRACT_NAME),
+    await deployer.loadArtifact(L2_ERC20_BRIDGED_CONSTANTS.CONTRACT_NAME),
     [
-      ERC20_BRIDGED_CONSTANTS.NAME,
-      ERC20_BRIDGED_CONSTANTS.SYMBOL,
-      ERC20_BRIDGED_CONSTANTS.DECIMALS,
+      L2_ERC20_BRIDGED_CONSTANTS.NAME,
+      L2_ERC20_BRIDGED_CONSTANTS.SYMBOL,
+      L2_ERC20_BRIDGED_CONSTANTS.DECIMALS,
     ],
     { initializer: "__TetherZkSync_init" },
     false

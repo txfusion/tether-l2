@@ -8,7 +8,7 @@ import {
   L1ERC20Bridge__factory,
   ERC20Token__factory,
 } from "../typechain/index";
-import { ERC20_BRIDGED_CONSTANTS } from "./utils/constants";
+import { L1_ERC20_BRIDGED_CONSTANTS } from "./utils/constants";
 
 const PRIVATE_KEY = process.env.PRIVATE_KEY as string;
 const IS_LOCAL = (process.env.NODE_ENV as string) === "local";
@@ -30,9 +30,9 @@ async function main() {
      * L1 Token
      */
     const L1ERC20Token = await new ERC20Token__factory(deployWallet).deploy(
-      ERC20_BRIDGED_CONSTANTS.NAME,
-      ERC20_BRIDGED_CONSTANTS.SYMBOL,
-      ERC20_BRIDGED_CONSTANTS.DECIMALS
+      L1_ERC20_BRIDGED_CONSTANTS.NAME,
+      L1_ERC20_BRIDGED_CONSTANTS.SYMBOL,
+      L1_ERC20_BRIDGED_CONSTANTS.DECIMALS
     );
 
     console.log(`CONTRACTS_L1_TOKEN_ADDR=${L1ERC20Token.address}`);

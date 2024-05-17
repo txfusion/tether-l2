@@ -27,7 +27,7 @@ import {BridgeInitializationHelper} from
 import {IL1ERC20Bridge} from "../../common/interfaces/IL1ERC20Bridge.sol";
 import {IL2ERC20Bridge} from "../../common/interfaces/IL2ERC20Bridge.sol";
 import {BridgeableTokensUpgradable} from "../../common/BridgeableTokensUpgradable.sol";
-import {BridgingManager} from "../../common/BridgingManager.sol";
+import {BridgingManagerUpgradeable} from "../../common/BridgingManagerUpgradeable.sol";
 
 /// @notice Smart contract that allows depositing USDT tokens from Ethereum to zkSync v2.0
 /// @dev It is standard implementation of USDT Bridge that can be used as a reference
@@ -36,7 +36,7 @@ contract L1ERC20Bridge is
     Initializable,
     IL1ERC20Bridge,
     BridgeableTokensUpgradable,
-    BridgingManager,
+    BridgingManagerUpgradeable,
     ReentrancyGuard
 {
     using SafeERC20 for IERC20;
@@ -79,7 +79,7 @@ contract L1ERC20Bridge is
 
         __BridgeableTokens_init(addresses._l1Token, addresses._l2Token);
 
-        __BridgingManager_init(addresses._admin);
+        __BridgingManagerUpgradeable_init(addresses._admin);
 
         bytes32 l2BridgeImplementationBytecodeHash = L2ContractHelper.hashL2Bytecode(_factoryDeps[0]);
         bytes32 l2BridgeProxyBytecodeHash = L2ContractHelper.hashL2Bytecode(_factoryDeps[1]);

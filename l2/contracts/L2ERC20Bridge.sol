@@ -3,9 +3,9 @@
 pragma solidity 0.8.20;
 
 import {L2CrossDomainEnabled} from "./L2CrossDomainEnabled.sol";
-import {IERC20BridgedUpgradeable} from "./interfaces/IERC20BridgedUpgradeable.sol";
+import {IERC20Bridged} from "../../common/interfaces/IERC20Bridged.sol";
 
-import {BridgingManager} from "../../common/BridgingManager.sol";
+import {BridgingManagerUpgradeable} from "../../common/BridgingManagerUpgradeable.sol";
 import {BridgeableTokensUpgradable} from "../../common/BridgeableTokensUpgradable.sol";
 import {IL1ERC20Bridge} from "../../common/interfaces/IL1ERC20Bridge.sol";
 import {IL2ERC20Bridge} from "../../common/interfaces/IL2ERC20Bridge.sol";
@@ -13,7 +13,12 @@ import {IL2ERC20Bridge} from "../../common/interfaces/IL2ERC20Bridge.sol";
 /// @notice The L2 token bridge works with the L1 token bridge to enable ERC20 token bridging
 ///     between L1 and L2. Mints tokens during deposits and burns tokens during withdrawals.
 ///     Additionally, adds the methods for bridging management: enabling and disabling withdrawals/deposits
-contract L2ERC20Bridge is IL2ERC20Bridge, BridgingManager, BridgeableTokensUpgradable, L2CrossDomainEnabled {
+contract L2ERC20Bridge is
+    IL2ERC20Bridge,
+    BridgingManagerUpgradeable,
+    BridgeableTokensUpgradable,
+    L2CrossDomainEnabled
+{
     /// @inheritdoc IL2ERC20Bridge
     address public override l1Bridge;
 
@@ -38,7 +43,7 @@ contract L2ERC20Bridge is IL2ERC20Bridge, BridgingManager, BridgeableTokensUpgra
         require(_l2Token != address(0), "L2 token address cannot be zero");
 
         __BridgeableTokens_init(_l1Token, _l2Token);
-        __BridgingManager_init(_admin);
+        __BridgingManagerUpgradeable_init(_admin);
 
         l1Bridge = _l1TokenBridge;
     }
@@ -60,7 +65,7 @@ contract L2ERC20Bridge is IL2ERC20Bridge, BridgingManager, BridgeableTokensUpgra
     {
         require(msg.value == 0, "Value should be 0 for ERC20 bridge");
 
-        IERC20BridgedUpgradeable(l2Token).bridgeMint(_l2Receiver, _amount);
+        IERC20Bridged(l2Token).bridgeMint(_l2Receiver, _amount);
 
         emit FinalizeDeposit(_l1Sender, _l2Receiver, l2Token, _amount);
     }
@@ -72,7 +77,7 @@ contract L2ERC20Bridge is IL2ERC20Bridge, BridgingManager, BridgeableTokensUpgra
         whenWithdrawalsEnabled
         onlySupportedL2Token(_l2Token)
     {
-        IERC20BridgedUpgradeable(l2Token).bridgeBurn(msg.sender, _amount);
+        IERC20Bridged(l2Token).bridgeBurn(msg.sender, _amount);
 
         bytes memory message = _getL1WithdrawMessage(_l1Receiver, l1Token, _amount);
         sendCrossDomainMessage(message);

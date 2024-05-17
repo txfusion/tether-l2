@@ -3,7 +3,7 @@ import { assert } from "chai";
 
 import { HASHES } from "../scripts/utils/hashes";
 import { setup } from "./setup/deployment.setup";
-import { ERC20_BRIDGED_CONSTANTS } from "../../l2/scripts/utils/constants";
+import { L2_ERC20_BRIDGED_CONSTANTS } from "../../l2/scripts/utils/constants";
 import { ZKSYNC_ADDRESSES } from "./utils/utils";
 
 describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () => {
@@ -293,7 +293,7 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
         l2: { l2Token },
       } = ctx;
 
-      assert.equal(await l2Token.name(), ERC20_BRIDGED_CONSTANTS.NAME);
+      assert.equal(await l2Token.name(), L2_ERC20_BRIDGED_CONSTANTS.NAME);
     });
 
     it("*** Symbol *** ", async () => {
@@ -301,7 +301,7 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
         l2: { l2Token },
       } = ctx;
 
-      assert.equal(await l2Token.symbol(), ERC20_BRIDGED_CONSTANTS.SYMBOL);
+      assert.equal(await l2Token.symbol(), L2_ERC20_BRIDGED_CONSTANTS.SYMBOL);
     });
 
     it("*** Decimals *** ", async () => {
@@ -309,7 +309,10 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
         l2: { l2Token },
       } = ctx;
 
-      assert.equal(await l2Token.decimals(), ERC20_BRIDGED_CONSTANTS.DECIMALS);
+      assert.equal(
+        await l2Token.decimals(),
+        L2_ERC20_BRIDGED_CONSTANTS.DECIMALS
+      );
     });
 
     it("*** Total supply *** ", async () => {

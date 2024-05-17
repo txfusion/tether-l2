@@ -1,6 +1,6 @@
-# Tether L2
+# Tether on zkSync
 
-This repository features the infrastructure for bridging Tether USD from Ethereum to ZkSync Era, alongside with common bridge administration features, such as enabling/disabling deposits/withdrawals, and Tether's own blacklisting (here called `freezing`) and destuction (here called `burning`) mechanisms of tokens owned by presumably evil actors in the system.
+This repository features the infrastructure for bridging Tether USD from Ethereum to ZkSync Era, alongside with common bridge administration features, such as enabling/disabling deposits/withdrawals, and Tether's own blocklisting and destuction mechanisms of tokens owned by presumably evil actors in the system.
 
 ## Setup
 
@@ -28,7 +28,7 @@ The core of this subfolder is the `L1ERC20Bridge.sol` contract, that handles:
 - **claiming failed deposits** (via `claimFailedDeposit`, in case L2 side of things fail for any reason)
 - **finalizing withdrawals** (via `finalizeWithdrawal`, in case user wants to go back to L1)
 
-The `L1ERC20Bridge.sol` also extends the `BridgingManager.sol` contract, that features enabling/disabling deposits/withdrawals on the L1.
+The `L1ERC20Bridge.sol` also extends the `BridgingManagerUpgradeable.sol` contract, that features enabling/disabling deposits/withdrawals on the L1.
 
 Since it is assumed that L1 already contains an `ERC20` token that should be bridged, all other contracts in this subfolder are mocks that are used in end-to-end testing in the local environment.
 
@@ -42,22 +42,21 @@ These can be triggered only by the private key that has the appropriate roles, w
 
 ### Contracts
 
-There are two core contracts: `L2ERC20Bridge.sol` and `ERC20BridgedUpgradeable.sol`.
+There are two core contracts: `L2ERC20Bridge.sol` and `TetherZkSync.sol`.
 
 `L2ERC20Bridge.sol` is the `L1ERC20Bridge.sol`'s counterpart and it handles:
 
 - **finalizing deposits** (via `finalizeDeposit`, to finally bridge L1 tokens to L2)
 - **withdrawing funds from the bridge** (via `withdraw`, to initiate bridging of tokens over to L1)
 
-The `L2ERC20Bridge.sol` also extends the `BridgingManager.sol` contract, that features enabling/disabling deposits/withdrawals on the L2.
+The `L2ERC20Bridge.sol` also extends the `BridgingManagerUpgradeable.sol` contract, that features enabling/disabling deposits/withdrawals on the L2.
 
-On L2, it is not assumed that there's an ERC20 token that's a counterpart to the bridged L1 token, there is a `ERC20BridgedUpgradeable.sol` contract, that is fully compatible with the `ERC20` standard, but also has a few unique functionalities:
+On L2, it is not assumed that there's an ERC20 token that's a counterpart to the bridged L1 token, there is a `TetherZkSync.sol` contract, that is fully compatible with the `ERC20` standard, but also has a few unique functionalities:
 
 - **minting tokens upon finalizing L1 deposit** (via `bridgeMint`, invoked only by the `L2ERC20Bridge.sol`)
 - **burning tokens upon initializing L2 withdrawal** (via `bridgeBurn`, invoked only by the `L2ERC20Bridge.sol`)
-- **burning frozen tokens** (via `burnFrozenTokensEscrow`, invoked only by the admin with the `ADDRESS_BURNER_ROLE`, which burn user's token and mint them back to an escrow account of choice, to preserve L2 total supply)
 
-Unique to Tether, `ERC20BridgedUpgradeable.sol` also contains a `freezing`/`burning` of tokens, which has already been mentioned. Administrators with appropriate roles (`ADDRESS_FREEZER_ROLE` and `ADDRESS_BURNER_ROLE`) can freeze assets of users that are deemed to be malicious actors (via `freezeAddress`). Those assets can no longer be moved using `transfer`/`transferFrom` and can then either be:
+Unique to Tether, `TetherZkSync.sol` also contains a `blocking`/`unblocking` of tokens, which has already been mentioned. Owner of the contract can block assets of users that are deemed to be malicious actors (via `addToBlockedList`). Those assets can no longer be moved using `transfer`/`transferFrom` and can then either be:
 
-- **unfrozen** (via `unfreezeAddress`, invoked only by admins with the `ADDRESS_FREEZER_ROLE`), so that users can continue using their assets freely
-- **burned** (via `burnFrozenTokensEscrow` or `burnFrozenTokens`, invoked only by the `ADDRESS_BURNER_ROLE`), where users' tokens are burned and then reminted to the escrow account of choice (either a specified address or simply the admin's address)
+- **unblocked** (via `removeFromBlockedList`), invoked only by owner of the contract, so that users can continue using their assets freely
+- **destroyed** (via `destroyBlockedFunds`), where users' tokens are burned

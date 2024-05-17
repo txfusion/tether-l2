@@ -5,14 +5,14 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 import {
   ADDRESSES,
-  ERC20_BRIDGED_CONSTANTS,
+  L2_ERC20_BRIDGED_CONSTANTS,
   PRIVATE_KEY,
   ZKSYNC_PROVIDER_URL,
 } from "./utils/constants";
 
 function getToken(hre: HardhatRuntimeEnvironment, wallet: Wallet): Contract {
   const artifact = hre.artifacts.readArtifactSync(
-    ERC20_BRIDGED_CONSTANTS.CONTRACT_NAME
+    L2_ERC20_BRIDGED_CONSTANTS.CONTRACT_NAME
   );
   return new Contract(ADDRESSES.L2_TOKEN_ADDR, artifact.abi, wallet);
 }

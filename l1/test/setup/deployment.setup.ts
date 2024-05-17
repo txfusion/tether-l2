@@ -3,7 +3,8 @@ import { Wallet } from "ethers";
 import { Provider, Wallet as ZkWallet } from "zksync-ethers";
 import {
   L1ERC20Bridge__factory,
-  TransparentUpgradeableProxy__factory,
+  // TransparentUpgradeableProxy__factory,
+  OssifiableProxy__factory,
 } from "../../typechain";
 import {
   L2ERC20Bridge__factory,
@@ -37,9 +38,7 @@ export async function setup() {
   return {
     l1: {
       proxy: {
-        l1Bridge: new TransparentUpgradeableProxy__factory(ethDeployer).attach(
-          l1Bridge
-        ),
+        l1Bridge: new OssifiableProxy__factory(ethDeployer).attach(l1Bridge),
       },
       l1Bridge: new L1ERC20Bridge__factory(ethDeployer).attach(l1Bridge),
       zkSync: IZkSyncFactory.connect(CONTRACTS_DIAMOND_PROXY_ADDR, ethDeployer),
@@ -49,12 +48,8 @@ export async function setup() {
     },
     l2: {
       proxy: {
-        l2Token: new TransparentUpgradeableProxy__factory(deployer).attach(
-          l2Token
-        ),
-        l2Bridge: new TransparentUpgradeableProxy__factory(deployer).attach(
-          l2Bridge
-        ),
+        l2Token: new OssifiableProxy__factory(deployer).attach(l2Token),
+        l2Bridge: new OssifiableProxy__factory(deployer).attach(l2Bridge),
       },
       // CONTRACTS
       l2Token: new TetherZkSync__factory(deployer).attach(l2Token),

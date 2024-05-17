@@ -9,6 +9,9 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "../../common/proxy/OssifiableProxy.sol";
 
+/// @notice Interfaces
+import "../../common/interfaces/IERC20Bridged.sol";
+
 /// @notice Stubs
 import "../../common/stubs/EmptyContractStub.sol";
 import "../../common/stubs/ERC20BridgedStub.sol";

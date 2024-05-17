@@ -184,7 +184,7 @@ describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
       ).to.be.revertedWith("The deposit amount can't be zero");
     });
 
-    it("Frozen address cannot finalize deposit", async () => {
+    it("Blocked address cannot finalize deposit", async () => {
       const { l2Erc20Bridge, accounts, stubs, l1Erc20Bridge, gasLimit } =
         context;
       const { deployerWallet, sender, recipient } = accounts;
@@ -199,15 +199,13 @@ describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
       const l2TxGasLimit = ethers.utils.parseUnits("1000", "gwei");
       const l2TxGasPerPubdataByte = ethers.utils.parseUnits("800", "wei");
 
-      // await expect(stubs.l2Token.setFrozenStatus(recipient.address, true)).to
+      // await expect(stubs.l2Token.addToBlockedList(recipient.address)).to
       //   .not.be.reverted;
       // TODO: fix after .reverted starts working again
-      await (
-        await stubs.l2Token.setFrozenStatus(recipient.address, true)
-      ).wait();
+      await (await stubs.l2Token.addToBlockedList(recipient.address)).wait();
       assert(
-        await stubs.l2Token.isFrozen(recipient.address),
-        "user is not frozen"
+        await stubs.l2Token.isBlocked(recipient.address),
+        "user is not blocked"
       );
 
       expect(
@@ -222,18 +220,18 @@ describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
           "0x",
           { gasLimit }
         )
-      ).to.be.revertedWithCustomError(stubs.l2Token, "OnlyNotFrozenAddress");
+      ).to.be.revertedWith("Blocked: msg.sender is blocked");
 
       // Revert back to old state
-      // await expect(stubs.l2Token.setFrozenStatus(recipient.address, false)).to
+      // await expect(stubs.l2Token.removeFromBlockedList(recipient.address)).to
       //   .not.be.reverted;
       // TODO: fix after .reverted starts working again
       await (
-        await stubs.l2Token.setFrozenStatus(recipient.address, false)
+        await stubs.l2Token.removeFromBlockedList(recipient.address)
       ).wait();
       assert(
-        (await stubs.l2Token.isFrozen(recipient.address)) == false,
-        "user is still frozen"
+        (await stubs.l2Token.isBlocked(recipient.address)) == false,
+        "user is still blocked"
       );
     });
 
@@ -328,21 +326,19 @@ describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
       assert.isTrue(await l2Erc20Bridge.isWithdrawalsEnabled());
     });
 
-    it("Frozen address cannot withdraw", async () => {
+    it("Blocked address cannot withdraw", async () => {
       const { l2Erc20Bridge, accounts, stubs, gasLimit } = context;
       const { recipient } = accounts;
 
       const amount = ethers.utils.parseUnits("0.5", "ether");
 
-      // expect(await stubs.l2Token.setFrozenStatus(recipient.address, true)).to
+      // expect(await stubs.l2Token.addToBlockedList(recipient.address)).to
       //   .not.be.reverted;
       // TODO: fix after .reverted starts working again
-      await (
-        await stubs.l2Token.setFrozenStatus(recipient.address, true)
-      ).wait();
+      await (await stubs.l2Token.addToBlockedList(recipient.address)).wait();
       assert(
-        await stubs.l2Token.isFrozen(recipient.address),
-        "user is not frozen"
+        await stubs.l2Token.isBlocked(recipient.address),
+        "user is not blocked"
       );
 
       expect(
@@ -351,19 +347,19 @@ describe("~~~~~ L2ERC20Bridge ~~~~~", async () => {
           .withdraw(recipient.address, stubs.l2Token.address, amount, {
             gasLimit,
           })
-      ).to.be.revertedWithCustomError(stubs.l2Token, "OnlyNotFrozenAddress");
+      ).to.be.revertedWith("Blocked: msg.sender is blocked");
 
       // Revert back to old state
 
-      // expect(await stubs.l2Token.setFrozenStatus(recipient.address, false)).to
+      // expect(await stubs.l2Token.addToBlockedList(recipient.address)).to
       //   .not.be.reverted;
       // TODO: fix after .reverted starts working again
       await (
-        await stubs.l2Token.setFrozenStatus(recipient.address, false)
+        await stubs.l2Token.removeFromBlockedList(recipient.address)
       ).wait();
       assert(
-        (await stubs.l2Token.isFrozen(recipient.address)) == false,
-        "user is still frozen"
+        (await stubs.l2Token.isBlocked(recipient.address)) == false,
+        "user is still blocked"
       );
     });
 

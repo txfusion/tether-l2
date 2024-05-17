@@ -4,14 +4,14 @@ import * as hre from "hardhat";
 
 import {
   ADDRESSES,
-  ERC20_BRIDGED_CONSTANTS,
+  L2_ERC20_BRIDGED_CONSTANTS,
   PRIVATE_KEY,
 } from "./utils/constants";
 import { verify } from "./utils/verify";
 
 export async function main() {
   console.info(
-    "~~~ Upgrading " + ERC20_BRIDGED_CONSTANTS.CONTRACT_NAME + " ~~~"
+    "~~~ Upgrading " + L2_ERC20_BRIDGED_CONSTANTS.CONTRACT_NAME + " ~~~"
   );
 
   const deployer = new Deployer(hre, new Wallet(PRIVATE_KEY));
@@ -19,7 +19,7 @@ export async function main() {
   const newERC20Bridged = await hre.zkUpgrades.upgradeProxy(
     deployer.zkWallet,
     ADDRESSES.L2_TOKEN_ADDR,
-    await deployer.loadArtifact(ERC20_BRIDGED_CONSTANTS.CONTRACT_NAME) // TODO: Add new upgraded artifact
+    await deployer.loadArtifact(L2_ERC20_BRIDGED_CONSTANTS.CONTRACT_NAME) // TODO: Add new upgraded artifact
   );
 
   // TODO: Initialize new implementation
