@@ -3,11 +3,12 @@ import { web3Provider } from "./utils/utils";
 import { Wallet } from "ethers";
 import { Deployer } from "./deploy";
 import {
-  OssifiableProxy__factory,
   L1ERC20Bridge__factory,
   ERC20Token__factory,
+  TransparentUpgradeableProxy__factory,
 } from "../typechain/index";
 import { ERC20_BRIDGED_CONSTANTS } from "./utils/constants";
+import { OssifiableProxy__factory } from "../../l2/typechain";
 
 const PRIVATE_KEY = process.env.PRIVATE_KEY as string;
 const IS_LOCAL = (process.env.NODE_ENV as string) === "local";
@@ -40,31 +41,32 @@ async function main() {
   /**
    * L1ERC20Bridge Implementation
    */
-  const L1ERC20BridgeContractImpl = await new L1ERC20Bridge__factory(
+  const l1ERC20BridgeContractImpl = await new L1ERC20Bridge__factory(
     deployWallet
   ).deploy();
 
   console.log(
-    `CONTRACTS_L1_BRIDGE_IMPLEMENTATION_ADDR=${L1ERC20BridgeContractImpl.address}`
+    `CONTRACTS_L1_BRIDGE_IMPLEMENTATION_ADDR=${l1ERC20BridgeContractImpl.address}`
   );
 
-  deployer.verifyContract(L1ERC20BridgeContractImpl.address);
+  deployer.verifyContract(l1ERC20BridgeContractImpl.address);
 
   /**
    * L1ERC20Bridge Proxy
    */
-  const L1ExecutorContractProxy = await new OssifiableProxy__factory(
+  // const l1BridgeContractProxy = await new TransparentUpgradeableProxy__factory(
+  const l1BridgeContractProxy = await new OssifiableProxy__factory(
     deployWallet
-  ).deploy(L1ERC20BridgeContractImpl.address, adminAddress, "0x", {
+  ).deploy(l1ERC20BridgeContractImpl.address, adminAddress, "0x", {
     gasLimit: 10_000_000,
   });
 
   console.log(
-    `CONTRACTS_L1_BRIDGE_PROXY_ADDR=${L1ExecutorContractProxy.address}`
+    `CONTRACTS_L1_BRIDGE_PROXY_ADDR=${l1BridgeContractProxy.address}`
   );
 
-  deployer.verifyContract(L1ExecutorContractProxy.address, [
-    L1ExecutorContractProxy.address,
+  deployer.verifyContract(l1BridgeContractProxy.address, [
+    l1ERC20BridgeContractImpl.address,
     adminAddress,
     "0x",
   ]);

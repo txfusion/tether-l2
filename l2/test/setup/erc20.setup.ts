@@ -33,10 +33,14 @@ export async function setup() {
   const erc20Bridged = (await hre.zkUpgrades.deployProxy(
     deployer.zkWallet,
     erc20BridgedArtifact,
-    [L2_TOKEN_NAME, L2_TOKEN_SYMBOL, L2_TOKEN_DECIMALS, admin.address],
+    [L2_TOKEN_NAME, L2_TOKEN_SYMBOL, L2_TOKEN_DECIMALS],
     { initializer: "__TetherZkSync_init" },
     true
   )) as TetherZkSync;
+
+  await erc20Bridged
+    .connect(deployer.zkWallet)
+    .__TetherZkSync_init_v2(admin.address);
 
   await erc20Bridged.transferOwnership(admin.address);
 

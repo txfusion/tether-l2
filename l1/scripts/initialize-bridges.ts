@@ -9,10 +9,16 @@ import { formatUnits } from "ethers/lib/utils";
 import { Deployer } from "./deploy";
 
 import * as path from "path";
+import { l1 } from "../typechain";
 
 const provider = web3Provider();
 
 // Artifacts
+// const l2ProxyArtifactsPath = path.join(
+//   path.resolve(__dirname, "../.."),
+//   "l2/artifacts-zk/@openzeppelin/contracts/proxy/transparent"
+// );
+
 const commonArtifactsPath = path.join(
   path.resolve(__dirname, "../.."),
   "l2/artifacts-zk/common"
@@ -23,11 +29,11 @@ const l2ArtifactsPath = path.join(
   "l2/artifacts-zk/l2/contracts"
 );
 
-const l2ProxyArtifactsPath = path.join(commonArtifactsPath, "proxy");
-
 // Bytecode
 const L2_BRIDGE_PROXY_BYTECODE = readBytecode(
-  l2ProxyArtifactsPath,
+  // l2ProxyArtifactsPath,
+  // "TransparentUpgradeableProxy"
+  path.join(commonArtifactsPath, "proxy"),
   "OssifiableProxy"
 );
 

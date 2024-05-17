@@ -36,18 +36,15 @@ contract TetherZkSync is Initializable, TetherTokenV2, AccessControlUpgradeable 
     }
 
     ////////////////////
-    //  Initializer   //
-    ///////////////////
-    /// @notice This function is used to integrate the previously deployed token with the bridge.
-    /// @param bridge_ The bridge address which is allowed to mint/burn tokens
-    function __TetherZkSync_init(string memory _name, string memory _symbol, uint8 _decimals, address bridge_)
-        external
-        initializer
-    {
-        _setBridge(bridge_);
-
+    //  Initializers  //
+    ////////////////////
+    function __TetherZkSync_init(string memory _name, string memory _symbol, uint8 _decimals) external initializer {
         __TetherToken__init(_name, _symbol, _decimals);
         __EIP3009Upgradeable_init(_name);
+    }
+
+    function __TetherZkSync_init_v2(address newBridge_) external reinitializer(2) onlyOwner {
+        _setBridge(newBridge_);
     }
 
     ///////////////////////////////////////

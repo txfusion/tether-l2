@@ -36,8 +36,8 @@ export async function setup() {
   const l1TokenImplContract = await deployer.deploy(emptyContractStubArtifact);
   const l1Token = await l1TokenImplContract.deployed();
 
-  const ossifiableProxyArtifact = await deployer.loadArtifact(
-    "OssifiableProxy"
+  const transparentUpgradeableProxyArtifact = await deployer.loadArtifact(
+    "TransparentUpgradeableProxy"
   );
 
   // L1 Bridge
@@ -63,7 +63,7 @@ export async function setup() {
 
   // proxy
   const l2Erc20BridgeProxyContract = await deployer.deploy(
-    ossifiableProxyArtifact,
+    transparentUpgradeableProxyArtifact,
     [l2Erc20BridgeImpl.address, governor.address, "0x"]
   );
   const l2Erc20BridgeProxy = await l2Erc20BridgeProxyContract.deployed();

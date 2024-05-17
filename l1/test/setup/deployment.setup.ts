@@ -1,15 +1,17 @@
 import { JsonRpcProvider } from "@ethersproject/providers";
 import { Wallet } from "ethers";
 import { Provider, Wallet as ZkWallet } from "zksync-ethers";
-import { L1ERC20Bridge__factory } from "../../typechain";
 import {
-  ERC20BridgedUpgradeable__factory,
+  L1ERC20Bridge__factory,
+  TransparentUpgradeableProxy__factory,
+} from "../../typechain";
+import {
   L2ERC20Bridge__factory,
+  TetherZkSync__factory,
 } from "../../../l2/typechain";
 
 import { ZKSYNC_ADDRESSES } from "./../utils/utils";
 import { IZkSyncFactory } from "zksync-ethers/build/typechain";
-import { OssifiableProxy__factory } from "../../typechain";
 
 const ETH_CLIENT_WEB3_URL = process.env.ETH_CLIENT_WEB3_URL as string;
 const ZKSYNC_PROVIDER_URL = process.env.ZKSYNC_PROVIDER_URL as string;
@@ -35,7 +37,9 @@ export async function setup() {
   return {
     l1: {
       proxy: {
-        l1Bridge: new OssifiableProxy__factory(ethDeployer).attach(l1Bridge),
+        l1Bridge: new TransparentUpgradeableProxy__factory(ethDeployer).attach(
+          l1Bridge
+        ),
       },
       l1Bridge: new L1ERC20Bridge__factory(ethDeployer).attach(l1Bridge),
       zkSync: IZkSyncFactory.connect(CONTRACTS_DIAMOND_PROXY_ADDR, ethDeployer),
@@ -45,11 +49,15 @@ export async function setup() {
     },
     l2: {
       proxy: {
-        l2Token: new OssifiableProxy__factory(deployer).attach(l2Token),
-        l2Bridge: new OssifiableProxy__factory(deployer).attach(l2Bridge),
+        l2Token: new TransparentUpgradeableProxy__factory(deployer).attach(
+          l2Token
+        ),
+        l2Bridge: new TransparentUpgradeableProxy__factory(deployer).attach(
+          l2Bridge
+        ),
       },
       // CONTRACTS
-      l2Token: new ERC20BridgedUpgradeable__factory(deployer).attach(l2Token),
+      l2Token: new TetherZkSync__factory(deployer).attach(l2Token),
       l2Bridge: new L2ERC20Bridge__factory(deployer).attach(l2Bridge),
       accounts: {
         deployer,

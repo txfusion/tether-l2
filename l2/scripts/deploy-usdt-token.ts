@@ -20,7 +20,6 @@ async function main() {
       ERC20_BRIDGED_CONSTANTS.NAME,
       ERC20_BRIDGED_CONSTANTS.SYMBOL,
       ERC20_BRIDGED_CONSTANTS.DECIMALS,
-      ADDRESSES.L2_BRIDGE_PROXY_ADDR,
     ],
     { initializer: "__TetherZkSync_init" },
     false

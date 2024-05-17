@@ -10,6 +10,7 @@ import {
     TxStatus
 } from "@matterlabs/zksync-contracts/l1/contracts/zksync/interfaces/IZkSync.sol";
 
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -31,7 +32,7 @@ import {BridgingManager} from "../../common/BridgingManager.sol";
 /// @notice Smart contract that allows depositing USDT tokens from Ethereum to zkSync v2.0
 /// @dev It is standard implementation of USDT Bridge that can be used as a reference
 /// for any other custom token bridges.
-contract L1ERC20Bridge is IL1ERC20Bridge, BridgeableTokensUpgradable, BridgingManager, ReentrancyGuard {
+contract L1ERC20Bridge is Initializable, IL1ERC20Bridge, BridgeableTokensUpgradable, BridgingManager, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     /// @dev zkSync smart contract that is used to operate with L2 via asynchronous L2 <-> L1 communication
