@@ -51,12 +51,13 @@ There are two core contracts: `L2ERC20Bridge.sol` and `TetherZkSync.sol`.
 
 The `L2ERC20Bridge.sol` also extends the `BridgingManagerUpgradeable.sol` contract, that features enabling/disabling deposits/withdrawals on the L2.
 
-On L2, it is not assumed that there's an ERC20 token that's a counterpart to the bridged L1 token, there is a `TetherZkSync.sol` contract, that is fully compatible with the `ERC20` standard, but also has a few unique functionalities:
+On L2, it is not assumed that there's an ERC20 token that's a counterpart to the bridged L1 token, there is a `TetherZkSync.sol` contract, that is fully compatible with the `ERC20` and `ERC20Permit` standards, but also has a few unique functionalities:
 
-- **minting tokens upon finalizing L1 deposit** (via `bridgeMint`, invoked only by the `L2ERC20Bridge.sol`)
-- **burning tokens upon initializing L2 withdrawal** (via `bridgeBurn`, invoked only by the `L2ERC20Bridge.sol`)
+- **minting tokens upon finalizing L1 deposit** (via `bridgeMint`, invoked only by the `L2ERC20Bridge.sol` with the `BRIDGE_ROLE` role)
+- **burning tokens upon initializing L2 withdrawal** (via `bridgeBurn`, invoked only by the `L2ERC20Bridge.sol` with the `BRIDGE_ROLE` role)
+- **EIP-3009 compatible signature operations for token transfers for EOAs and EIP-1271 smart accounts** (via `transferWithAuthorization`, `receiveWithAuthorization` and `cancelAuthorization`, which are contained in `TetherTokenV2.sol` and `EIP3009Upgradeable.sol` contracts)
 
-Unique to Tether, `TetherZkSync.sol` also contains a `blocking`/`unblocking` of tokens, which has already been mentioned. Owner of the contract can block assets of users that are deemed to be malicious actors (via `addToBlockedList`). Those assets can no longer be moved using `transfer`/`transferFrom` and can then either be:
+Unique to Tether, `WithBlockedList.sol` also contains a `blocking`/`unblocking` of tokens, which have already been mentioned. Owner of the contract can block assets of users that are deemed to be malicious actors (via `addToBlockedList`). Those assets can no longer be moved using `transfer`/`transferFrom` and can then either be:
 
 - **unblocked** (via `removeFromBlockedList`), invoked only by owner of the contract, so that users can continue using their assets freely
 - **destroyed** (via `destroyBlockedFunds`), where users' tokens are burned
