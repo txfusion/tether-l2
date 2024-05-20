@@ -76,4 +76,6 @@ contract TetherZkSync is Initializable, TetherTokenV2, AccessControlUpgradeable 
 
         emit TetherZkSync__BridgeUpdated(_oldBridge, newBridge_);
     }
+
+    uint256[47] private __gap;
 }
