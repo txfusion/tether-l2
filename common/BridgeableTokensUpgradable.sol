@@ -2,50 +2,93 @@
 
 pragma solidity 0.8.20;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /// @notice Upgradeable variant of contract that contains the logic for validation of tokens used in the bridging process
 contract BridgeableTokensUpgradable is Initializable {
-    /// @notice Address of the bridged token in the L1 chain
-    address public l1Token;
+    ///////////////////
+    //    Errors     //
+    //////////////////
+    error BridgeableTokensUpgradable__ErrorUnsupportedL1Token();
+    error BridgeableTokensUpgradable__ErrorUnsupportedL2Token();
+    error BridgeableTokensUpgradable__ErrorAccountIsZeroAddress();
 
-    /// @notice Address of the token minted on the L2 chain when token bridged
-    address public l2Token;
-
-    /// @param l1Token_ Address of the bridged token in the L1 chain
-    /// @param l2Token_ Address of the token minted on the L2 chain when token bridged
-    function __BridgeableTokens_init(address l1Token_, address l2Token_) internal onlyInitializing {
-        l1Token = l1Token_;
-        l2Token = l2Token_;
+    ////////////////////////////
+    //    State Variables     //
+    ///////////////////////////
+    /// @param l1Token Address of the bridged token in the L1 chain
+    /// @param l2Token Address of the token minted on the L2 chain when token bridged
+    struct BTState {
+        address l1Token;
+        address l2Token;
     }
 
+    /// @dev The location of the slot with State
+    bytes32 private constant STATE_SLOT = bytes32(uint256(keccak256("BridgeableTokensUpgradable.bridgingState")) - 1);
+
+    ///////////////////
+    //    Events     //
+    //////////////////
+    event BridgeableTokensUpgradable__L1TokenUpdated(address indexed l1Token);
+    event BridgeableTokensUpgradable__L2TokenUpdated(address indexed l2Token);
+
+    //////////////////////
+    //    Modifiers     //
+    /////////////////////
     /// @dev Validates that passed l1Token_ is supported by the bridge
     modifier onlySupportedL1Token(address l1Token_) {
-        if (l1Token_ != l1Token) {
-            revert ErrorUnsupportedL1Token();
+        if (l1Token_ != _loadBTState().l1Token) {
+            revert BridgeableTokensUpgradable__ErrorUnsupportedL1Token();
         }
         _;
     }
 
     /// @dev Validates that passed l2Token_ is supported by the bridge
     modifier onlySupportedL2Token(address l2Token_) {
-        if (l2Token_ != l2Token) {
-            revert ErrorUnsupportedL2Token();
+        if (l2Token_ != _loadBTState().l2Token) {
+            revert BridgeableTokensUpgradable__ErrorUnsupportedL2Token();
         }
         _;
     }
 
-    /// @dev validates that account_ is not zero address
-    modifier onlyNonZeroAccount(address account_) {
-        if (account_ == address(0)) {
-            revert ErrorAccountIsZeroAddress();
+    /// @dev validates that addressToCheck_ is not zero address
+    modifier onlyNonZeroAddress(address addressToCheck_) {
+        if (addressToCheck_ == address(0)) {
+            revert BridgeableTokensUpgradable__ErrorAccountIsZeroAddress();
         }
         _;
     }
 
-    error ErrorUnsupportedL1Token();
-    error ErrorUnsupportedL2Token();
-    error ErrorAccountIsZeroAddress();
+    ////////////////////
+    //  Initializer   //
+    ///////////////////
+    /// @param l1Token_ Address of the bridged token in the L1 chain
+    /// @param l2Token_ Address of the token minted on the L2 chain when token bridged
+    function __BridgeableTokens_init(address l1Token_, address l2Token_) internal onlyInitializing {
+        _setL1Token(l1Token_);
+        _setL2Token(l2Token_);
+    }
+
+    ////////////////////////////////////////
+    //     Private/Internal Functions     //
+    ////////////////////////////////////////
+    function _setL1Token(address _l1Token) internal onlyNonZeroAddress(_l1Token){
+        _loadBTState().l1Token = _l1Token;
+        emit BridgeableTokensUpgradable__L1TokenUpdated(_l1Token);
+    }
+
+    function _setL2Token(address _l2Token) internal onlyNonZeroAddress(_l2Token){
+        _loadBTState().l1Token = _l2Token;
+        emit BridgeableTokensUpgradable__L2TokenUpdated(_l2Token);
+    }
+
+    /// @dev Returns the reference to the slot with State struct
+    function _loadBTState() private pure returns (BTState storage r) {
+        bytes32 slot = STATE_SLOT;
+        assembly {
+            r.slot := slot
+        }
+    }
 
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new

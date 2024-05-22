@@ -37,11 +37,10 @@ contract L2ERC20Bridge is
     function initialize(address _l1TokenBridge, address _l1Token, address _l2Token, address _admin)
         external
         initializer
-        onlyNonZeroAccount(_l1TokenBridge)
+        onlyNonZeroAddress(_l1TokenBridge)
+        onlyNonZeroAddress(_l1Token)
+        onlyNonZeroAddress(_l2Token)
     {
-        require(_l1Token != address(0), "L1 token address cannot be zero");
-        require(_l2Token != address(0), "L2 token address cannot be zero");
-
         __BridgeableTokens_init(_l1Token, _l2Token);
         __BridgingManagerUpgradeable_init(_admin);
 
