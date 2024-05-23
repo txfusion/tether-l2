@@ -35,6 +35,7 @@
     "zksync-web3": "^0.14.3"
   },
   "dependencies": {
-    "dotenv": "^16.2.0"
+    "dotenv": "^16.2.0",
+    "@matterlabs/zksync-contracts": "github:matter-labs/era-contracts#994897b14eb1d8e77c809da2db3379e7b58125b5"
   }
 }

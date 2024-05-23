@@ -34,7 +34,7 @@
   "dependencies": {
     "@openzeppelin/contracts": "^4.9.5",
     "@openzeppelin/contracts-upgradeable": "^4.9.0",
-    "@matterlabs/zksync-contracts": "github:matter-labs/era-contracts#f3630fcb",
+    "@matterlabs/zksync-contracts": "github:matter-labs/era-contracts#994897b14eb1d8e77c809da2db3379e7b58125b5",
     "zksync-ethers": "5.0.0"
   }
 }

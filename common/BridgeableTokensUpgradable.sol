@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.20;
+pragma solidity 0.8.24;
 
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
@@ -17,10 +17,10 @@ contract BridgeableTokensUpgradable is Initializable {
     //    State Variables     //
     ///////////////////////////
     /// @param l1Token Address of the bridged token in the L1 chain
-    /// @param l2Token Address of the token minted on the L2 chain when token bridged
+    /// @param l2Token A mapping chainId => bridgeProxy. Used to store the bridge proxy's address, and to see if it has been deployed yet.
     struct BTState {
         address l1Token;
-        address l2Token;
+        mapping(uint256 chainId => address l2Token) l2Token; // TODO: Check if we need this
     }
 
     /// @dev The location of the slot with State
@@ -30,24 +30,20 @@ contract BridgeableTokensUpgradable is Initializable {
     //    Events     //
     //////////////////
     event BridgeableTokensUpgradable__L1TokenUpdated(address indexed l1Token);
-    event BridgeableTokensUpgradable__L2TokenUpdated(address indexed l2Token);
+    event BridgeableTokensUpgradable__L2TokenUpdated(uint256 indexed chainId, address indexed l2Token);
 
     //////////////////////
     //    Modifiers     //
     /////////////////////
     /// @dev Validates that passed l1Token_ is supported by the bridge
     modifier onlySupportedL1Token(address l1Token_) {
-        if (l1Token_ != _loadBTState().l1Token) {
-            revert BridgeableTokensUpgradable__ErrorUnsupportedL1Token();
-        }
+        _isL1TokenSupported(l1Token_);
         _;
     }
 
-    /// @dev Validates that passed l2Token_ is supported by the bridge
-    modifier onlySupportedL2Token(address l2Token_) {
-        if (l2Token_ != _loadBTState().l2Token) {
-            revert BridgeableTokensUpgradable__ErrorUnsupportedL2Token();
-        }
+    /// @dev Validates that passed l2Token_ is supported on the specified chainId_
+    modifier onlySupportedL2Token(uint256 chainId_, address l2Token_) {
+        _isL2TokenSupported(chainId_, l2Token_);
         _;
     }
 
@@ -63,23 +59,33 @@ contract BridgeableTokensUpgradable is Initializable {
     //  Initializer   //
     ///////////////////
     /// @param l1Token_ Address of the bridged token in the L1 chain
-    /// @param l2Token_ Address of the token minted on the L2 chain when token bridged
-    function __BridgeableTokens_init(address l1Token_, address l2Token_) internal onlyInitializing {
+    function __BridgeableTokens_init(address l1Token_) internal onlyInitializing {
         _setL1Token(l1Token_);
-        _setL2Token(l2Token_);
     }
 
     ////////////////////////////////////////
     //     Private/Internal Functions     //
     ////////////////////////////////////////
-    function _setL1Token(address _l1Token) internal onlyNonZeroAddress(_l1Token){
-        _loadBTState().l1Token = _l1Token;
-        emit BridgeableTokensUpgradable__L1TokenUpdated(_l1Token);
+    function _isL1TokenSupported(address l1Token_) internal view {
+        if (l1Token_ != _loadBTState().l1Token) {
+            revert BridgeableTokensUpgradable__ErrorUnsupportedL1Token();
+        }
     }
 
-    function _setL2Token(address _l2Token) internal onlyNonZeroAddress(_l2Token){
-        _loadBTState().l1Token = _l2Token;
-        emit BridgeableTokensUpgradable__L2TokenUpdated(_l2Token);
+    function _isL2TokenSupported(uint256 chainId_, address l2Token_) internal view {
+        if (l2Token_ != _loadBTState().l2Token[chainId_]) {
+            revert BridgeableTokensUpgradable__ErrorUnsupportedL2Token();
+        }
+    }
+
+    function _setL1Token(address l1Token_) internal onlyNonZeroAddress(l1Token_){
+        _loadBTState().l1Token = l1Token_;
+        emit BridgeableTokensUpgradable__L1TokenUpdated(l1Token_);
+    }
+
+    function _setL2Token(uint256 chainId_, address l2Token_) internal onlyNonZeroAddress(l2Token_){
+        _loadBTState().l2Token[chainId_] = l2Token_;
+        emit BridgeableTokensUpgradable__L2TokenUpdated(chainId_, l2Token_);
     }
 
     /// @dev Returns the reference to the slot with State struct
