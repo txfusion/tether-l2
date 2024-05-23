@@ -4,6 +4,7 @@ pragma solidity 0.8.24;
 
 // solhint-disable reason-string, gas-custom-errors
 
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
@@ -34,9 +35,6 @@ import {BridgingManagerUpgradeable} from "../../common/BridgingManagerUpgradeabl
 contract L1SharedBridge is Initializable, IL1SharedBridge, ReentrancyGuard, Ownable2StepUpgradeable, PausableUpgradeable, BridgeableTokensUpgradable, BridgingManagerUpgradeable
 {
     using SafeERC20 for IERC20;
-
-    /// @dev The address of the WETH token on L1.
-    // address public immutable override L1_WETH_TOKEN;
 
     /// @dev Bridgehub smart contract that is used to operate with L2 via asynchronous L2 <-> L1 communication.
     IBridgehub public immutable override BRIDGE_HUB;
@@ -118,13 +116,12 @@ contract L1SharedBridge is Initializable, IL1SharedBridge, ReentrancyGuard, Owna
     /// @dev Contract is expected to be used as proxy implementation.
     /// @dev Initialize the implementation to prevent Parity hack.
     constructor(
-        // address _l1WethAddress,
+        address, // TODO: We can probably remove this, but in order to not lose our minds when we get to testing and deploying, let's keep it for now
         IBridgehub _bridgehub,
         uint256 _eraChainId,
         address _eraDiamondProxy
     ) reentrancyGuardInitializer {
         _disableInitializers();
-        // L1_WETH_TOKEN = _l1WethAddress;
         BRIDGE_HUB = _bridgehub;
         ERA_CHAIN_ID = _eraChainId;
         ERA_DIAMOND_PROXY = _eraDiamondProxy;
@@ -138,7 +135,7 @@ contract L1SharedBridge is Initializable, IL1SharedBridge, ReentrancyGuard, Owna
         _transferOwnership(_owner);
 
         __BridgeableTokens_init(_l1Token);
-        __BridgingManagerUpgradeable_init(_l1Admin);
+        __BridgingManagerUpgradeable_init(_owner);
     }
 
     /// @dev This sets the first post diamond upgrade batch for era, used to check old eth withdrawals
@@ -234,7 +231,7 @@ contract L1SharedBridge is Initializable, IL1SharedBridge, ReentrancyGuard, Owna
         uint256 _chainId,
         address _prevMsgSender,
         // solhint-disable-next-line no-unused-vars
-        uint256 _l2Value,
+        uint256,
         bytes calldata _data
     )
         external
@@ -258,18 +255,16 @@ contract L1SharedBridge is Initializable, IL1SharedBridge, ReentrancyGuard, Owna
 
         uint256 withdrawAmount = _depositFunds(_prevMsgSender, IERC20(_l1Token), _depositAmount);
         require(withdrawAmount == _depositAmount, "5T"); // The token has non-standard transfer logic
+        require(_depositAmount != 0, "6T"); // empty deposit amount
 
-        uint256 amount = _depositAmount;
-        require(amount != 0, "6T"); // empty deposit amount
-
-        bytes32 txDataHash = keccak256(abi.encode(_prevMsgSender, _l1Token, amount));
+        bytes32 txDataHash = keccak256(abi.encode(_prevMsgSender, _l1Token, _depositAmount));
         if (!hyperbridgingEnabled[_chainId]) {
-            chainBalance[_chainId][_l1Token] += amount;
+            chainBalance[_chainId][_l1Token] += _depositAmount;
         }
 
         {
             // Request the finalization of the deposit on the L2 side
-            bytes memory l2TxCalldata = _getDepositL2Calldata(_prevMsgSender, _l2Receiver, _l1Token, amount);
+            bytes memory l2TxCalldata = _getDepositL2Calldata(_prevMsgSender, _l2Receiver, _l1Token, _depositAmount);
 
             request = L2TransactionRequestTwoBridgesInner({
                 magicValue: TWO_BRIDGES_MAGIC_VALUE,
@@ -285,7 +280,7 @@ contract L1SharedBridge is Initializable, IL1SharedBridge, ReentrancyGuard, Owna
             from: _prevMsgSender,
             to: _l2Receiver,
             l1Token: _l1Token,
-            amount: amount
+            amount: _depositAmount
         });
     }
 
@@ -746,6 +741,11 @@ contract L1SharedBridge is Initializable, IL1SharedBridge, ReentrancyGuard, Owna
             _l2TxNumberInBatch: _l2TxNumberInBatch,
             _merkleProof: _merkleProof
         });
+    }
+
+    // Not needed
+    function L1_WETH_TOKEN() external pure override returns (address){
+        return address(0);
     }
 
     /*//////////////////////////////////////////////////////////////

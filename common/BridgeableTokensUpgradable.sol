@@ -37,13 +37,17 @@ contract BridgeableTokensUpgradable is Initializable {
     /////////////////////
     /// @dev Validates that passed l1Token_ is supported by the bridge
     modifier onlySupportedL1Token(address l1Token_) {
-        _isL1TokenSupported(l1Token_);
+        if(!_isL1TokenSupported(l1Token_)){
+            revert BridgeableTokensUpgradable__ErrorUnsupportedL1Token();
+        }
         _;
     }
 
     /// @dev Validates that passed l2Token_ is supported on the specified chainId_
     modifier onlySupportedL2Token(uint256 chainId_, address l2Token_) {
-        _isL2TokenSupported(chainId_, l2Token_);
+        if(!_isL2TokenSupported(chainId_, l2Token_)){
+            revert BridgeableTokensUpgradable__ErrorUnsupportedL2Token();
+        }
         _;
     }
 
@@ -66,16 +70,12 @@ contract BridgeableTokensUpgradable is Initializable {
     ////////////////////////////////////////
     //     Private/Internal Functions     //
     ////////////////////////////////////////
-    function _isL1TokenSupported(address l1Token_) internal view {
-        if (l1Token_ != _loadBTState().l1Token) {
-            revert BridgeableTokensUpgradable__ErrorUnsupportedL1Token();
-        }
+    function _isL1TokenSupported(address l1Token_) internal view returns(bool) {
+        return l1Token_ == _loadBTState().l1Token;
     }
 
-    function _isL2TokenSupported(uint256 chainId_, address l2Token_) internal view {
-        if (l2Token_ != _loadBTState().l2Token[chainId_]) {
-            revert BridgeableTokensUpgradable__ErrorUnsupportedL2Token();
-        }
+    function _isL2TokenSupported(uint256 chainId_, address l2Token_) internal view returns(bool) {
+        return l2Token_ == _loadBTState().l2Token[chainId_];
     }
 
     function _setL1Token(address l1Token_) internal onlyNonZeroAddress(l1Token_){

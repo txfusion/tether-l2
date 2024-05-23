@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.20;
+pragma solidity 0.8.24;
 
 import {L2CrossDomainEnabled} from "./L2CrossDomainEnabled.sol";
 import {IERC20Bridged} from "../../common/interfaces/IERC20Bridged.sol";

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.13;
+pragma solidity 0.8.24;
 
 interface IL1ERC20Bridge {
     /// @dev _l1Token Address of token on L1

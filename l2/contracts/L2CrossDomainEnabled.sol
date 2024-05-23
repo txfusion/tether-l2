@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.20;
+pragma solidity 0.8.24;
 
 import {AddressAliasHelper} from "@matterlabs/zksync-contracts/l1/contracts/vendor/AddressAliasHelper.sol";
 import {IL1Messenger} from "@matterlabs/zksync-contracts/l2/system-contracts/interfaces/IL1Messenger.sol";
