@@ -6,7 +6,7 @@ pragma solidity 0.8.24;
 // So here we import those contracts that are needed only in offchain scripts.
 
 /// @notice Proxy
-import "@openzeppelin/contracts-upgradeable/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "../../common/proxy/OssifiableProxy.sol";
 
 /// @notice Stubs

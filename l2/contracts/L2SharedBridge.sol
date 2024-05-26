@@ -166,7 +166,7 @@ contract L2ERC20Bridge is
     function withdraw(address _l1Receiver, address _l2Token, uint256 _amount)
         external
         override
-        onlySupportedL2Token(block.chainid, _l2Token)
+        onlySupportedL2Token(_l2Token)
     {
         if (_amount == 0) {
             revert AmountMustBeGreaterThanZero();
@@ -186,7 +186,7 @@ contract L2ERC20Bridge is
     }
 
     function setL2Token(address l2Token_) external onlyOwner {
-        _setL2Token(block.chainid, l2Token_);
+        _setL2Token(l2Token_);
     }
 
     /// @dev Deploy and initialize the L2 token for the L1 counterpart

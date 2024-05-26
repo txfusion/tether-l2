@@ -22,6 +22,7 @@
     "@nomicfoundation/hardhat-verify": "^1.1.1",
     "@nomiclabs/hardhat-ethers": "^2.2.3",
     "@nomiclabs/hardhat-waffle": "^2.0.6",
+    "@openzeppelin/contracts": "^4.9.0",
     "@openzeppelin/contracts-upgradeable": "^4.9.0",
     "@typechain/ethers-v5": "^11.0.0",
     "@typechain/hardhat": "^8.0.0",
