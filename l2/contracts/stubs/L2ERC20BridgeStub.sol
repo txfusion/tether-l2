@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.24;
+pragma solidity 0.8.20;
 
 import {IL1ERC20Bridge} from "../../../common/interfaces/IL1ERC20Bridge.sol";
 import {IL2ERC20Bridge} from "../../../common/interfaces/IL2ERC20Bridge.sol";

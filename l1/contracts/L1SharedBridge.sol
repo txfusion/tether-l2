@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.24;
+pragma solidity ^0.8.20;
 
 // solhint-disable reason-string, gas-custom-errors
 
@@ -13,26 +13,41 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {IL1ERC20Bridge} from "@matterlabs/zksync-contracts/l1-contracts/contracts/bridge/interfaces/IL1ERC20Bridge.sol";
-import {IL1SharedBridge} from "@matterlabs/zksync-contracts/l1-contracts/contracts/bridge/interfaces/IL1SharedBridge.sol";
+import {IL1SharedBridge} from
+    "@matterlabs/zksync-contracts/l1-contracts/contracts/bridge/interfaces/IL1SharedBridge.sol";
 import {IL2Bridge} from "@matterlabs/zksync-contracts/l1-contracts/contracts/bridge/interfaces/IL2Bridge.sol";
 
-import {IMailbox} from "@matterlabs/zksync-contracts/l1-contracts/contracts/state-transition/chain-interfaces/IMailbox.sol";
+import {IMailbox} from
+    "@matterlabs/zksync-contracts/l1-contracts/contracts/state-transition/chain-interfaces/IMailbox.sol";
 import {L2Message, TxStatus} from "@matterlabs/zksync-contracts/l1-contracts/contracts/common/Messaging.sol";
 import {UnsafeBytes} from "@matterlabs/zksync-contracts/l1-contracts/contracts/common/libraries/UnsafeBytes.sol";
 import {ReentrancyGuard} from "@matterlabs/zksync-contracts/l1-contracts/contracts/common/ReentrancyGuard.sol";
 import {AddressAliasHelper} from "@matterlabs/zksync-contracts/l1-contracts/contracts/vendor/AddressAliasHelper.sol";
 // import {ETH_TOKEN_ADDRESS, TWO_BRIDGES_MAGIC_VALUE} from "@matterlabs/zksync-contracts/l1-contracts/contracts/common/Config.sol";
 import {TWO_BRIDGES_MAGIC_VALUE} from "@matterlabs/zksync-contracts/l1-contracts/contracts/common/Config.sol";
-import {IBridgehub, L2TransactionRequestTwoBridgesInner, L2TransactionRequestDirect} from "@matterlabs/zksync-contracts/l1-contracts/contracts/bridgehub/IBridgehub.sol";
-import {IGetters} from "@matterlabs/zksync-contracts/l1-contracts/contracts/state-transition/chain-interfaces/IGetters.sol";
-import {L2_BASE_TOKEN_SYSTEM_CONTRACT_ADDR} from "@matterlabs/zksync-contracts/l1-contracts/contracts/common/L2ContractAddresses.sol";
+import {
+    IBridgehub,
+    L2TransactionRequestTwoBridgesInner,
+    L2TransactionRequestDirect
+} from "@matterlabs/zksync-contracts/l1-contracts/contracts/bridgehub/IBridgehub.sol";
+import {IGetters} from
+    "@matterlabs/zksync-contracts/l1-contracts/contracts/state-transition/chain-interfaces/IGetters.sol";
+import {L2_BASE_TOKEN_SYSTEM_CONTRACT_ADDR} from
+    "@matterlabs/zksync-contracts/l1-contracts/contracts/common/L2ContractAddresses.sol";
 
 import {BridgeableTokensUpgradable} from "../../common/BridgeableTokensUpgradable.sol";
 import {BridgingManagerUpgradeable} from "../../common/BridgingManagerUpgradeable.sol";
 
 /// @notice Smart contract that allows depositing USDT tokens from Ethereum to hyperchains built on top of the ZK stack
 /// @dev It is modified implementation of the Shared Bridge that can be used as a reference for any other custom token bridges.
-contract L1SharedBridge is Initializable, IL1SharedBridge, ReentrancyGuard, Ownable2StepUpgradeable, PausableUpgradeable, BridgeableTokensUpgradable, BridgingManagerUpgradeable
+contract L1SharedBridge is
+    Initializable,
+    IL1SharedBridge,
+    ReentrancyGuard,
+    Ownable2StepUpgradeable,
+    PausableUpgradeable,
+    BridgeableTokensUpgradable,
+    BridgingManagerUpgradeable
 {
     using SafeERC20 for IERC20;
 
@@ -75,13 +90,13 @@ contract L1SharedBridge is Initializable, IL1SharedBridge, ReentrancyGuard, Owna
 
     /// @dev A mapping chainId => L2 deposit transaction hash => keccak256(abi.encode(account, tokenAddress, amount))
     /// @dev Tracks deposit transactions from L2 to enable users to claim their funds if a deposit fails.
-    mapping(uint256 chainId => mapping(bytes32 l2DepositTxHash => bytes32 depositDataHash))
-        public
-        override depositHappened;
+    mapping(uint256 chainId => mapping(bytes32 l2DepositTxHash => bytes32 depositDataHash)) public override
+        depositHappened;
 
     /// @dev Tracks the processing status of L2 to L1 messages, indicating whether a message has already been finalized.
-    mapping(uint256 chainId => mapping(uint256 l2BatchNumber => mapping(uint256 l2ToL1MessageNumber => bool isFinalized)))
-        public isWithdrawalFinalized;
+    mapping(
+        uint256 chainId => mapping(uint256 l2BatchNumber => mapping(uint256 l2ToL1MessageNumber => bool isFinalized))
+    ) public isWithdrawalFinalized;
 
     /// @dev Indicates whether the hyperbridging is enabled for a given chain.
     // slither-disable-next-line uninitialized-state
@@ -130,11 +145,17 @@ contract L1SharedBridge is Initializable, IL1SharedBridge, ReentrancyGuard, Owna
     /// @dev Initializes a contract bridge for later use. Expected to be used in the proxy
     /// @param _owner Address which can change L2 token implementation and upgrade the bridge
     /// implementation. The owner is the Governor and separate from the ProxyAdmin from now on, so that the Governor can call the bridge.
-    function initialize(address _owner, address _l1Token) external reentrancyGuardInitializer initializer onlyNonZeroAddress(_l1Token) onlyNonZeroAddress(_owner) {
+    function initialize(address _owner, address _l1Token)
+        external
+        reentrancyGuardInitializer
+        initializer
+        onlyNonZeroAddress(_l1Token)
+        onlyNonZeroAddress(_owner)
+    {
         require(_owner != address(0), "ShB owner 0");
         _transferOwnership(_owner);
 
-        __BridgeableTokens_init(_l1Token);
+        __BridgeableTokens_init(_l1Token, address(1));
         __BridgingManagerUpgradeable_init(_owner);
     }
 
@@ -147,7 +168,10 @@ contract L1SharedBridge is Initializable, IL1SharedBridge, ReentrancyGuard, Owna
 
     /// @dev This sets the first post upgrade batch for era, used to check old token withdrawals
     /// @param _eraPostLegacyBridgeUpgradeFirstBatch The first batch number on the zkSync Era Diamond Proxy that was settled after legacy bridge upgrade.
-    function setEraPostLegacyBridgeUpgradeFirstBatch(uint256 _eraPostLegacyBridgeUpgradeFirstBatch) external onlyOwner {
+    function setEraPostLegacyBridgeUpgradeFirstBatch(uint256 _eraPostLegacyBridgeUpgradeFirstBatch)
+        external
+        onlyOwner
+    {
         require(eraPostLegacyBridgeUpgradeFirstBatch == 0, "ShB: eFPUB already set");
         eraPostLegacyBridgeUpgradeFirstBatch = _eraPostLegacyBridgeUpgradeFirstBatch;
     }
@@ -166,14 +190,18 @@ contract L1SharedBridge is Initializable, IL1SharedBridge, ReentrancyGuard, Owna
     }
 
     /// @dev transfer tokens from legacy erc20 bridge or mailbox and set chainBalance as part of migration process
-    function transferFundsFromLegacy(address _token, address _target, uint256 _targetChainId) external onlyOwner onlySupportedL1Token(_token) {
+    function transferFundsFromLegacy(address _token, address _target, uint256 _targetChainId)
+        external
+        onlyOwner
+        onlySupportedL1Token(_token)
+    {
         uint256 balanceBefore = IERC20(_token).balanceOf(address(this));
 
         uint256 legacyBridgeBalance = IERC20(_token).balanceOf(address(legacyBridge));
         require(legacyBridgeBalance > 0, "ShB: 0 amount to transfer");
 
         IL1ERC20Bridge(_target).transferTokenToSharedBridge(_token);
-        
+
         uint256 balanceAfter = IERC20(_token).balanceOf(address(this));
         require(balanceAfter - balanceBefore == legacyBridgeBalance, "ShB: wrong amount transferred");
 
@@ -192,13 +220,12 @@ contract L1SharedBridge is Initializable, IL1SharedBridge, ReentrancyGuard, Owna
 
     /// @notice Allows bridgehub to acquire mintValue for L1->L2 transactions.
     /// @dev If the corresponding L2 transaction fails, refunds are issued to a refund recipient on L2.
-    function bridgehubDepositBaseToken(
-        uint256 _chainId,
-        address _prevMsgSender,
-        address _l1Token,
-        uint256 _amount
-    ) external payable virtual onlyBridgehubOrEra(_chainId) 
-        whenNotPaused 
+    function bridgehubDepositBaseToken(uint256 _chainId, address _prevMsgSender, address _l1Token, uint256 _amount)
+        external
+        payable
+        virtual
+        onlyBridgehubOrEra(_chainId)
+        whenNotPaused
         onlySupportedL1Token(_l1Token) // <--- TODO: do we need these modifiers, since they have to do with depositing base tokens, not USDT
         whenDepositsEnabled
     {
@@ -244,10 +271,7 @@ contract L1SharedBridge is Initializable, IL1SharedBridge, ReentrancyGuard, Owna
     {
         require(l2BridgeAddress[_chainId] != address(0), "ShB l2 bridge not deployed");
 
-        (address _l1Token, uint256 _depositAmount, address _l2Receiver) = abi.decode(
-            _data,
-            (address, uint256, address)
-        );
+        (address _l1Token, uint256 _depositAmount, address _l2Receiver) = abi.decode(_data, (address, uint256, address));
         //  require(_l1Token != L1_WETH_TOKEN, "ShB: WETH deposit not supported");
         require(BRIDGE_HUB.baseToken(_chainId) != _l1Token, "ShB: baseToken deposit not supported");
         require(_isL1TokenSupported(_l1Token), "ShB: unsupported L1 token");
@@ -286,11 +310,12 @@ contract L1SharedBridge is Initializable, IL1SharedBridge, ReentrancyGuard, Owna
 
     /// @notice Confirms the acceptance of a transaction by the Mailbox, as part of the L2 transaction process within Bridgehub.
     /// This function is utilized by `requestL2TransactionTwoBridges` to validate the execution of a transaction.
-    function bridgehubConfirmL2Transaction(
-        uint256 _chainId,
-        bytes32 _txDataHash,
-        bytes32 _txHash
-    ) external override onlyBridgehub whenNotPaused {
+    function bridgehubConfirmL2Transaction(uint256 _chainId, bytes32 _txDataHash, bytes32 _txHash)
+        external
+        override
+        onlyBridgehub
+        whenNotPaused
+    {
         require(depositHappened[_chainId][_txHash] == 0x00, "ShB tx hap");
         depositHappened[_chainId][_txHash] = _txDataHash;
         emit BridgehubDepositFinalized(_chainId, _txDataHash, _txHash);
@@ -304,12 +329,11 @@ contract L1SharedBridge is Initializable, IL1SharedBridge, ReentrancyGuard, Owna
     }
 
     /// @dev Generate a calldata for calling the deposit finalization on the L2 bridge contract
-    function _getDepositL2Calldata(
-        address _l1Sender,
-        address _l2Receiver,
-        address _l1Token,
-        uint256 _amount
-    ) internal view returns (bytes memory) {
+    function _getDepositL2Calldata(address _l1Sender, address _l2Receiver, address _l1Token, uint256 _amount)
+        internal
+        view
+        returns (bytes memory)
+    {
         bytes memory gettersData = _getERC20Getters(_l1Token);
         return abi.encodeCall(IL2Bridge.finalizeDeposit, (_l1Sender, _l2Receiver, _l1Token, _amount, gettersData));
     }
@@ -426,8 +450,7 @@ contract L1SharedBridge is Initializable, IL1SharedBridge, ReentrancyGuard, Owna
     /// @return Whether withdrawal was initiated on zkSync Era before Legacy Bridge upgrade.
     function _isEraLegacyTokenWithdrawal(uint256 _chainId, uint256 _l2BatchNumber) internal view returns (bool) {
         require(
-            (_chainId != ERA_CHAIN_ID) || eraPostLegacyBridgeUpgradeFirstBatch != 0,
-            "ShB: LegacyUFB not set for Era"
+            (_chainId != ERA_CHAIN_ID) || eraPostLegacyBridgeUpgradeFirstBatch != 0, "ShB: LegacyUFB not set for Era"
         );
         return (_chainId == ERA_CHAIN_ID) && (_l2BatchNumber < eraPostLegacyBridgeUpgradeFirstBatch);
     }
@@ -437,20 +460,23 @@ contract L1SharedBridge is Initializable, IL1SharedBridge, ReentrancyGuard, Owna
     /// @param _l2BatchNumber The L2 batch number for the deposit where it was processed.
     /// @param _l2TxNumberInBatch The L2 transaction number in the batch, in which the deposit was processed.
     /// @return Whether deposit was initiated on zkSync Era before Shared Bridge upgrade.
-    function _isEraLegacyDeposit(
-        uint256 _chainId,
-        uint256 _l2BatchNumber,
-        uint256 _l2TxNumberInBatch
-    ) internal view returns (bool) {
+    function _isEraLegacyDeposit(uint256 _chainId, uint256 _l2BatchNumber, uint256 _l2TxNumberInBatch)
+        internal
+        view
+        returns (bool)
+    {
         require(
             (_chainId != ERA_CHAIN_ID) || (eraLegacyBridgeLastDepositBatch != 0),
             "ShB: last deposit time not set for Era"
         );
-        return
-            (_chainId == ERA_CHAIN_ID) &&
-            (_l2BatchNumber < eraLegacyBridgeLastDepositBatch ||
-                (_l2TxNumberInBatch < eraLegacyBridgeLastDepositTxNumber &&
-                    _l2BatchNumber == eraLegacyBridgeLastDepositBatch));
+        return (_chainId == ERA_CHAIN_ID)
+            && (
+                _l2BatchNumber < eraLegacyBridgeLastDepositBatch
+                    || (
+                        _l2TxNumberInBatch < eraLegacyBridgeLastDepositTxNumber
+                            && _l2BatchNumber == eraLegacyBridgeLastDepositBatch
+                    )
+            );
     }
 
     /// @notice Finalize the withdrawal and release funds
@@ -505,10 +531,8 @@ contract L1SharedBridge is Initializable, IL1SharedBridge, ReentrancyGuard, Owna
         // Handling special case for withdrawal from zkSync Era initiated before Shared Bridge.
         if (_isEraLegacyEthWithdrawal(_chainId, _l2BatchNumber)) {
             // Checks that the withdrawal wasn't finalized already.
-            bool alreadyFinalized = IGetters(ERA_DIAMOND_PROXY).isEthWithdrawalFinalized(
-                _l2BatchNumber,
-                _l2MessageIndex
-            );
+            bool alreadyFinalized =
+                IGetters(ERA_DIAMOND_PROXY).isEthWithdrawalFinalized(_l2BatchNumber, _l2MessageIndex);
             require(!alreadyFinalized, "Withdrawal is already finalized 2");
         }
 
@@ -543,11 +567,8 @@ contract L1SharedBridge is Initializable, IL1SharedBridge, ReentrancyGuard, Owna
             bool baseTokenWithdrawal = (l1Token == BRIDGE_HUB.baseToken(_chainId));
             address l2Sender = baseTokenWithdrawal ? L2_BASE_TOKEN_SYSTEM_CONTRACT_ADDR : l2BridgeAddress[_chainId];
 
-            l2ToL1Message = L2Message({
-                txNumberInBatch: _messageParams.l2TxNumberInBatch,
-                sender: l2Sender,
-                data: _message
-            });
+            l2ToL1Message =
+                L2Message({txNumberInBatch: _messageParams.l2TxNumberInBatch, sender: l2Sender, data: _message});
         }
 
         bool success = BRIDGE_HUB.proveL2MessageInclusion({
@@ -560,10 +581,11 @@ contract L1SharedBridge is Initializable, IL1SharedBridge, ReentrancyGuard, Owna
         require(success, "ShB withd w proof"); // withdrawal wrong proof
     }
 
-    function _parseL2WithdrawalMessage(
-        uint256 _chainId,
-        bytes memory _l2ToL1message
-    ) internal view returns (address l1Receiver, address l1Token, uint256 amount) {
+    function _parseL2WithdrawalMessage(uint256 _chainId, bytes memory _l2ToL1message)
+        internal
+        view
+        returns (address l1Receiver, address l1Token, uint256 amount)
+    {
         // We check that the message is long enough to read the data.
         // Please note that there are two versions of the message:
         // 1. The message that is sent by `withdraw(address _l1Receiver)`
@@ -635,7 +657,17 @@ contract L1SharedBridge is Initializable, IL1SharedBridge, ReentrancyGuard, Owna
         uint256 _l2TxGasLimit,
         uint256 _l2TxGasPerPubdataByte,
         address _refundRecipient
-    ) external payable override onlyLegacyBridge nonReentrant whenNotPaused onlySupportedL1Token(_l1Token) whenDepositsEnabled returns (bytes32 l2TxHash) {
+    )
+        external
+        payable
+        override
+        onlyLegacyBridge
+        nonReentrant
+        whenNotPaused
+        onlySupportedL1Token(_l1Token)
+        whenDepositsEnabled
+        returns (bytes32 l2TxHash)
+    {
         require(l2BridgeAddress[ERA_CHAIN_ID] != address(0), "ShB b. n dep");
         // require(_l1Token != L1_WETH_TOKEN, "ShB: WETH deposit not supported 2");
 
@@ -696,7 +728,13 @@ contract L1SharedBridge is Initializable, IL1SharedBridge, ReentrancyGuard, Owna
         uint16 _l2TxNumberInBatch,
         bytes calldata _message,
         bytes32[] calldata _merkleProof
-    ) external override onlyLegacyBridge whenWithdrawalsEnabled returns (address l1Receiver, address l1Token, uint256 amount) {
+    )
+        external
+        override
+        onlyLegacyBridge
+        whenWithdrawalsEnabled
+        returns (address l1Receiver, address l1Token, uint256 amount)
+    {
         (l1Receiver, l1Token, amount) = _finalizeWithdrawal({
             _chainId: ERA_CHAIN_ID,
             _l2BatchNumber: _l2BatchNumber,
@@ -744,7 +782,7 @@ contract L1SharedBridge is Initializable, IL1SharedBridge, ReentrancyGuard, Owna
     }
 
     // Not needed
-    function L1_WETH_TOKEN() external pure override returns (address){
+    function L1_WETH_TOKEN() external pure override returns (address) {
         return address(0);
     }
 
@@ -762,7 +800,7 @@ contract L1SharedBridge is Initializable, IL1SharedBridge, ReentrancyGuard, Owna
         _unpause();
     }
 
-    function setL1Token(address _l1Token) external onlyOwner{
+    function setL1Token(address _l1Token) external onlyOwner {
         _setL1Token(_l1Token);
-    } 
+    }
 }

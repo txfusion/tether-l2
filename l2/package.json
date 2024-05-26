@@ -24,6 +24,7 @@
     "@nomiclabs/hardhat-ethers": "^2.2.3",
     "@nomiclabs/hardhat-waffle": "^2.0.6",
     "chai": "^4.3.7",
-    "typechain": "^8.2.0"
+    "typechain": "^8.2.0",
+    "@matterlabs/zksync-contracts": "github:matter-labs/era-contracts#994897b14eb1d8e77c809da2db3379e7b58125b5"
   }
 }

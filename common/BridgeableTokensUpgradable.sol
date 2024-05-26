@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.24;
+pragma solidity ^0.8.20;
 
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
@@ -37,7 +37,7 @@ contract BridgeableTokensUpgradable is Initializable {
     /////////////////////
     /// @dev Validates that passed l1Token_ is supported by the bridge
     modifier onlySupportedL1Token(address l1Token_) {
-        if(!_isL1TokenSupported(l1Token_)){
+        if (!_isL1TokenSupported(l1Token_)) {
             revert BridgeableTokensUpgradable__ErrorUnsupportedL1Token();
         }
         _;
@@ -45,7 +45,7 @@ contract BridgeableTokensUpgradable is Initializable {
 
     /// @dev Validates that passed l2Token_ is supported on the specified chainId_
     modifier onlySupportedL2Token(uint256 chainId_, address l2Token_) {
-        if(!_isL2TokenSupported(chainId_, l2Token_)){
+        if (!_isL2TokenSupported(chainId_, l2Token_)) {
             revert BridgeableTokensUpgradable__ErrorUnsupportedL2Token();
         }
         _;
@@ -63,27 +63,29 @@ contract BridgeableTokensUpgradable is Initializable {
     //  Initializer   //
     ///////////////////
     /// @param l1Token_ Address of the bridged token in the L1 chain
-    function __BridgeableTokens_init(address l1Token_) internal onlyInitializing {
+    /// @param l2Token_ Address of the bridged token in the L2 chain
+    function __BridgeableTokens_init(address l1Token_, address l2Token_) internal onlyInitializing {
         _setL1Token(l1Token_);
+        _setL2Token(block.chainid, l2Token_);
     }
 
     ////////////////////////////////////////
     //     Private/Internal Functions     //
     ////////////////////////////////////////
-    function _isL1TokenSupported(address l1Token_) internal view returns(bool) {
+    function _isL1TokenSupported(address l1Token_) internal view returns (bool) {
         return l1Token_ == _loadBTState().l1Token;
     }
 
-    function _isL2TokenSupported(uint256 chainId_, address l2Token_) internal view returns(bool) {
+    function _isL2TokenSupported(uint256 chainId_, address l2Token_) internal view returns (bool) {
         return l2Token_ == _loadBTState().l2Token[chainId_];
     }
 
-    function _setL1Token(address l1Token_) internal onlyNonZeroAddress(l1Token_){
+    function _setL1Token(address l1Token_) internal onlyNonZeroAddress(l1Token_) {
         _loadBTState().l1Token = l1Token_;
         emit BridgeableTokensUpgradable__L1TokenUpdated(l1Token_);
     }
 
-    function _setL2Token(uint256 chainId_, address l2Token_) internal onlyNonZeroAddress(l2Token_){
+    function _setL2Token(uint256 chainId_, address l2Token_) internal onlyNonZeroAddress(l2Token_) {
         _loadBTState().l2Token[chainId_] = l2Token_;
         emit BridgeableTokensUpgradable__L2TokenUpdated(chainId_, l2Token_);
     }
