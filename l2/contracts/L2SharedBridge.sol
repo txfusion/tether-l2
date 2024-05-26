@@ -110,9 +110,10 @@ contract L2ERC20Bridge is
             // Note: `setL2Token` must be called in this case
         }
 
-        __BridgeableTokens_init(address(1), _l2Token);
+        __BridgeableTokens_init();
         __BridgingManagerUpgradeable_init(_aliasedOwner);
         __Ownable_init();
+        _setL2Token(_l2Token);
         transferOwnership(_aliasedOwner);
     }
 

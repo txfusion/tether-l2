@@ -20,7 +20,7 @@ contract BridgeableTokensUpgradable is Initializable {
     /// @param l2Token A mapping chainId => bridgeProxy. Used to store the bridge proxy's address, and to see if it has been deployed yet.
     struct BTState {
         address l1Token;
-        mapping(uint256 chainId => address l2Token) l2Token; // TODO: Check if we need this
+        address l2Token;
     }
 
     /// @dev The location of the slot with State
@@ -30,7 +30,7 @@ contract BridgeableTokensUpgradable is Initializable {
     //    Events     //
     //////////////////
     event BridgeableTokensUpgradable__L1TokenUpdated(address indexed l1Token);
-    event BridgeableTokensUpgradable__L2TokenUpdated(uint256 indexed chainId, address indexed l2Token);
+    event BridgeableTokensUpgradable__L2TokenUpdated(address indexed l2Token);
 
     //////////////////////
     //    Modifiers     //
@@ -44,8 +44,8 @@ contract BridgeableTokensUpgradable is Initializable {
     }
 
     /// @dev Validates that passed l2Token_ is supported on the specified chainId_
-    modifier onlySupportedL2Token(uint256 chainId_, address l2Token_) {
-        if (!_isL2TokenSupported(chainId_, l2Token_)) {
+    modifier onlySupportedL2Token(address l2Token_) {
+        if (!_isL2TokenSupported(l2Token_)) {
             revert BridgeableTokensUpgradable__ErrorUnsupportedL2Token();
         }
         _;
@@ -62,12 +62,7 @@ contract BridgeableTokensUpgradable is Initializable {
     ////////////////////
     //  Initializer   //
     ///////////////////
-    /// @param l1Token_ Address of the bridged token in the L1 chain
-    /// @param l2Token_ Address of the bridged token in the L2 chain
-    function __BridgeableTokens_init(address l1Token_, address l2Token_) internal onlyInitializing {
-        _setL1Token(l1Token_);
-        _setL2Token(block.chainid, l2Token_);
-    }
+    function __BridgeableTokens_init() internal onlyInitializing {}
 
     ////////////////////////////////////////
     //     Private/Internal Functions     //
@@ -76,8 +71,8 @@ contract BridgeableTokensUpgradable is Initializable {
         return l1Token_ == _loadBTState().l1Token;
     }
 
-    function _isL2TokenSupported(uint256 chainId_, address l2Token_) internal view returns (bool) {
-        return l2Token_ == _loadBTState().l2Token[chainId_];
+    function _isL2TokenSupported(address l2Token_) internal view returns (bool) {
+        return l2Token_ == _loadBTState().l2Token;
     }
 
     function _setL1Token(address l1Token_) internal onlyNonZeroAddress(l1Token_) {
@@ -85,9 +80,9 @@ contract BridgeableTokensUpgradable is Initializable {
         emit BridgeableTokensUpgradable__L1TokenUpdated(l1Token_);
     }
 
-    function _setL2Token(uint256 chainId_, address l2Token_) internal onlyNonZeroAddress(l2Token_) {
-        _loadBTState().l2Token[chainId_] = l2Token_;
-        emit BridgeableTokensUpgradable__L2TokenUpdated(chainId_, l2Token_);
+    function _setL2Token(address l2Token_) internal onlyNonZeroAddress(l2Token_) {
+        _loadBTState().l2Token = l2Token_;
+        emit BridgeableTokensUpgradable__L2TokenUpdated(l2Token_);
     }
 
     /// @dev Returns the reference to the slot with State struct

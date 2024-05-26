@@ -155,8 +155,10 @@ contract L1SharedBridge is
         require(_owner != address(0), "ShB owner 0");
         _transferOwnership(_owner);
 
-        __BridgeableTokens_init(_l1Token, address(1));
+        __BridgeableTokens_init();
         __BridgingManagerUpgradeable_init(_owner);
+
+        _setL1Token(_l1Token);
     }
 
     /// @dev This sets the first post diamond upgrade batch for era, used to check old eth withdrawals
