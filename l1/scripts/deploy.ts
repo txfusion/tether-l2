@@ -3,7 +3,7 @@ import "@nomiclabs/hardhat-ethers";
 import { Signer, Wallet, providers } from "ethers";
 import { getAddressFromEnv } from "./utils/utils";
 import { IZkSyncFactory } from "zksync-ethers/build/typechain";
-import { L1ERC20Bridge__factory } from "../typechain/factories/l1/contracts/L1ERC20Bridge__factory";
+import { L1SharedBridge__factory } from "../typechain/factories/l1/contracts/L1SharedBridge__factory";
 
 export const IS_PRODUCTION = (process.env.NODE_ENV as string) === "prod";
 export const IS_LOCAL = (process.env.NODE_ENV as string) === "local";
@@ -12,13 +12,15 @@ export interface DeployedAddresses {
   zkSync: {
     diamondProxy: string;
   };
-  bridges: {
+  bridging: {
+    bridgeHubProxy: string;
     l1BridgeImplementation: string;
     l1BridgeProxy: string;
     l2BridgeProxy: string;
   };
   l1Token: string;
   l2Token: string;
+  governance: string;
 }
 
 export interface DeployerConfig {
@@ -32,25 +34,29 @@ export function deployedAddressesFromEnv(): DeployedAddresses {
     zkSync: {
       diamondProxy: getAddressFromEnv("CONTRACTS_DIAMOND_PROXY_ADDR"),
     },
-    bridges: {
+    bridging: {
+      bridgeHubProxy: getAddressFromEnv("CONTRACTS_BRIDGEHUB_PROXY_ADDR"),
       l1BridgeImplementation: getAddressFromEnv(
-        "CONTRACTS_L1_BRIDGE_IMPLEMENTATION_ADDR"
+        "CONTRACTS_L1_SHARED_BRIDGE_IMPLEMENTATION_ADDR"
       ),
-      l1BridgeProxy: getAddressFromEnv("CONTRACTS_L1_BRIDGE_PROXY_ADDR"),
+      l1BridgeProxy: getAddressFromEnv("CONTRACTS_L1_SHARED_BRIDGE_PROXY_ADDR"),
       l2BridgeProxy: getAddressFromEnv("CONTRACTS_L2_BRIDGE_PROXY_ADDR"),
     },
     l1Token: getAddressFromEnv("CONTRACTS_L1_TOKEN_ADDR"),
     l2Token: getAddressFromEnv("CONTRACTS_L2_TOKEN_PROXY_ADDR"),
+    governance: getAddressFromEnv("CONTRACTS_GOVERNANCE_ADDR"),
   };
 }
 
 export class Deployer {
   public addresses: DeployedAddresses;
+  public wallet: Wallet;
   private verbose: boolean;
 
   constructor(config: DeployerConfig) {
-    this.verbose = config.verbose != null ? config.verbose : false;
     this.addresses = deployedAddressesFromEnv();
+    this.wallet = config.deployWallet;
+    this.verbose = config.verbose != null ? config.verbose : false;
   }
 
   public zkSyncContract(signerOrProvider: Signer | providers.Provider) {
@@ -61,8 +67,8 @@ export class Deployer {
   }
 
   public defaultL1Bridge(signerOrProvider: Signer | providers.Provider) {
-    return L1ERC20Bridge__factory.connect(
-      this.addresses.bridges.l1BridgeProxy,
+    return L1SharedBridge__factory.connect(
+      this.addresses.bridging.l1BridgeProxy,
       signerOrProvider
     );
   }

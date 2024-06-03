@@ -72,8 +72,8 @@ else
     echo 'Skipping L1 ERC20 Token deployment. Token already exists.'
 fi
 
-## CONTRACTS_L1_BRIDGE_PROXY_ADDR
-formatAndAppendOrUpdate "$output" "CONTRACTS_L1_BRIDGE_PROXY_ADDR"
+## CONTRACTS_L1_SHARED_BRIDGE_PROXY_ADDR
+formatAndAppendOrUpdate "$output" "CONTRACTS_L1_SHARED_BRIDGE_PROXY_ADDR"
 
 cd ../l2
 
@@ -81,7 +81,7 @@ echo "==============================="
 echo "DEPLOYING USDT TOKEN"
 
 output=$(npm run deploy-usdt-token)
-# formatAndAppendOrUpdate "$output" "CONTRACTS_L2_TOKEN_IMPLEMENTATION_ADDR" # most likely won't be used anymore
+formatAndAppendOrUpdate "$output" "CONTRACTS_L2_TOKEN_IMPLEMENTATION_ADDR" # most likely won't be used anymore
 formatAndAppendOrUpdate "$output" "CONTRACTS_L2_TOKEN_PROXY_ADDR"
 
 cd ../l1

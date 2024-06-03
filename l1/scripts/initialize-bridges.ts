@@ -72,25 +72,17 @@ async function main() {
     console.log("Initializing bridges");
 
     const tx = await l1Bridge.initialize(
-      [L2_BRIDGE_IMPLEMENTATION_BYTECODE, L2_BRIDGE_PROXY_BYTECODE],
-      [
-        deployer.addresses.l1Token,
-        deployer.addresses.l2Token,
-        deployWallet.address, // default admin for L2 Bridge
-        deployWallet.address, // default admin for L1 Bridge
-        deployer.addresses.zkSync.diamondProxy,
-      ] as any,
-      requiredValueToInitializeBridge,
-      requiredValueToInitializeBridge,
+      deployWallet.address,
+      deployer.addresses.l1Token,
       {
         gasPrice,
-        value: requiredValueToInitializeBridge.mul(2),
         gasLimit: 10000000,
       }
     );
 
     const receipt = await tx.wait();
-    console.log(`CONTRACTS_L2_BRIDGE_PROXY_ADDR=${await l1Bridge.l2Bridge()}`);
+    // TODO: get CONTRACTS_L2_BRIDGE_PROXY_ADDR from registering a new chain on the bridge hub
+    // console.log(`CONTRACTS_L2_BRIDGE_PROXY_ADDR=${await l1Bridge.l2Bridge()}`);
     console.log(`Gas used: `, receipt.gasUsed.toString());
   } catch (err) {
     console.log("Error", err);

@@ -30,7 +30,7 @@ async function main() {
 
   const l1Bridge = deployer.defaultL1Bridge(deployWallet);
   const l2Bridge = L2ERC20Bridge__factory.connect(
-    deployer.addresses.bridges.l2BridgeProxy,
+    deployer.addresses.bridging.l2BridgeProxy,
     zkWallet
   );
 

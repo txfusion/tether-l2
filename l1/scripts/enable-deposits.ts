@@ -32,7 +32,7 @@ async function main() {
   console.log(`Using L1 Bridge: ${l1Bridge.address}`);
 
   const l2Bridge = L2ERC20Bridge__factory.connect(
-    deployer.addresses.bridges.l2BridgeProxy,
+    deployer.addresses.bridging.l2BridgeProxy,
     zkWallet
   );
 

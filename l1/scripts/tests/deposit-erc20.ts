@@ -20,7 +20,7 @@ const l2ArtifactsPath = path.join(
 );
 
 const L1_BRIDGE_PROXY_ADDR = getAddressFromEnv(
-  "CONTRACTS_L1_BRIDGE_PROXY_ADDR"
+  "CONTRACTS_L1_SHARED_BRIDGE_PROXY_ADDR"
 );
 const L1_BRIDGE_PROXY_INTERFACE = readInterface(
   l1ArtifactsPath,
