@@ -23,8 +23,10 @@ import {L2Message, TxStatus} from "@matterlabs/zksync-contracts/l1-contracts/con
 import {UnsafeBytes} from "@matterlabs/zksync-contracts/l1-contracts/contracts/common/libraries/UnsafeBytes.sol";
 import {ReentrancyGuard} from "@matterlabs/zksync-contracts/l1-contracts/contracts/common/ReentrancyGuard.sol";
 import {AddressAliasHelper} from "@matterlabs/zksync-contracts/l1-contracts/contracts/vendor/AddressAliasHelper.sol";
-// import {ETH_TOKEN_ADDRESS, TWO_BRIDGES_MAGIC_VALUE} from "@matterlabs/zksync-contracts/l1-contracts/contracts/common/Config.sol";
-import {TWO_BRIDGES_MAGIC_VALUE} from "@matterlabs/zksync-contracts/l1-contracts/contracts/common/Config.sol";
+import {
+    ETH_TOKEN_ADDRESS,
+    TWO_BRIDGES_MAGIC_VALUE
+} from "@matterlabs/zksync-contracts/l1-contracts/contracts/common/Config.sol";
 import {
     IBridgehub,
     L2TransactionRequestTwoBridgesInner,
@@ -131,7 +133,7 @@ contract L1SharedBridge is
     /// @dev Contract is expected to be used as proxy implementation.
     /// @dev Initialize the implementation to prevent Parity hack.
     constructor(
-        address, // TODO: We can probably remove this, but in order to not lose our minds when we get to testing and deploying, let's keep it for now
+        address, // _l1WethAddress TODO: We can probably remove this, but in order to not lose our minds when we get to testing and deploying, let's keep it for now
         IBridgehub _bridgehub,
         uint256 _eraChainId,
         address _eraDiamondProxy
@@ -228,14 +230,20 @@ contract L1SharedBridge is
         virtual
         onlyBridgehubOrEra(_chainId)
         whenNotPaused
-        onlySupportedL1Token(_l1Token) // <--- TODO: do we need these modifiers, since they have to do with depositing base tokens, not USDT
         whenDepositsEnabled
     {
-        // The Bridgehub also checks this, but we want to be sure
-        require(msg.value == 0, "ShB m.v > 0 b d.it");
+        // Note: allow deposits of base tokens as well?
+        require(BRIDGE_HUB.baseToken(_chainId) == _l1Token, "ShB: unrecognized baseToken for specified chainId");
 
-        uint256 amount = _depositFunds(_prevMsgSender, IERC20(_l1Token), _amount); // note if _prevMsgSender is this contract, this will return 0. This does not happen.
-        require(amount == _amount, "3T"); // The token has non-standard transfer logic
+        if (_l1Token == ETH_TOKEN_ADDRESS) {
+            require(msg.value == _amount, "L1SharedBridge: msg.value not equal to amount");
+        } else {
+            // The Bridgehub also checks this, but we want to be sure
+            require(msg.value == 0, "ShB m.v > 0 b d.it");
+
+            uint256 amount = _depositFunds(_prevMsgSender, IERC20(_l1Token), _amount); // note if _prevMsgSender is this contract, this will return 0. This does not happen.
+            require(amount == _amount, "3T"); // The token has non-standard transfer logic
+        }
 
         if (!hyperbridgingEnabled[_chainId]) {
             chainBalance[_chainId][_l1Token] += _amount;
@@ -274,7 +282,7 @@ contract L1SharedBridge is
         require(l2BridgeAddress[_chainId] != address(0), "ShB l2 bridge not deployed");
 
         (address _l1Token, uint256 _depositAmount, address _l2Receiver) = abi.decode(_data, (address, uint256, address));
-        //  require(_l1Token != L1_WETH_TOKEN, "ShB: WETH deposit not supported");
+
         require(BRIDGE_HUB.baseToken(_chainId) != _l1Token, "ShB: baseToken deposit not supported");
         require(_isL1TokenSupported(_l1Token), "ShB: unsupported L1 token");
         require(msg.value == 0, "ShB m.v > 0 for BH d.it 2");
@@ -433,7 +441,20 @@ contract L1SharedBridge is
             chainBalance[_chainId][_l1Token] -= _amount;
         }
 
-        IERC20(_l1Token).safeTransfer(_depositSender, _amount);
+        // Note: allow deposits of base tokens as well?
+        if (_l1Token == ETH_TOKEN_ADDRESS) {
+            bool callSuccess;
+            // Low-level assembly call, to avoid any memory copying (save gas)
+            assembly {
+                callSuccess := call(gas(), _depositSender, _amount, 0, 0, 0, 0)
+            }
+            require(callSuccess, "ShB: claimFailedDeposit failed");
+        } else {
+            IERC20(_l1Token).safeTransfer(_depositSender, _amount);
+            // Note we don't allow weth deposits anymore, but there might be legacy weth deposits.
+            // until we add Weth bridging capabilities, we don't wrap/unwrap weth to ether.
+        }
+
         emit ClaimedFailedDepositSharedBridge(_chainId, _depositSender, _l1Token, _amount);
     }
 
@@ -552,7 +573,19 @@ contract L1SharedBridge is
             chainBalance[_chainId][l1Token] -= amount;
         }
 
-        IERC20(l1Token).safeTransfer(l1Receiver, amount);
+        // Note: allow withdrawal of base tokens as well? Won't work with _isL1TokenSupported() require
+        if (l1Token == ETH_TOKEN_ADDRESS) {
+            bool callSuccess;
+            // Low-level assembly call, to avoid any memory copying (save gas)
+            assembly {
+                callSuccess := call(gas(), l1Receiver, amount, 0, 0, 0, 0)
+            }
+            require(callSuccess, "ShB: withdraw failed");
+        } else {
+            // Withdraw funds
+            IERC20(l1Token).safeTransfer(l1Receiver, amount);
+        }
+
         emit WithdrawalFinalizedSharedBridge(_chainId, l1Receiver, l1Token, amount);
     }
 
