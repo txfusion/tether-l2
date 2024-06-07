@@ -3,7 +3,6 @@ import { HardhatUserConfig } from "hardhat/config";
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-waffle";
 import "@nomicfoundation/hardhat-verify";
-// import "@openzeppelin/hardhat-upgrades"; // Note: uncommenting this messes up compilation of MatterLabs' contracts
 
 dotenv.config({ path: `../.env` });
 

@@ -149,12 +149,10 @@ contract L1SharedBridge is
     /// implementation. The owner is the Governor and separate from the ProxyAdmin from now on, so that the Governor can call the bridge.
     function initialize(address _owner, address _l1Token)
         external
-        reentrancyGuardInitializer
         initializer
         onlyNonZeroAddress(_l1Token)
         onlyNonZeroAddress(_owner)
     {
-        require(_owner != address(0), "ShB owner 0");
         _transferOwnership(_owner);
 
         __BridgeableTokens_init();

@@ -12,3 +12,7 @@ import "../../common/proxy/OssifiableProxy.sol";
 /// @notice Stubs
 import "../../common/stubs/EmptyContractStub.sol";
 import "../../common/stubs/ERC20BridgedStub.sol";
+
+/// @notice Others
+import "@matterlabs/zksync-contracts/l1-contracts/contracts/dev-contracts/SingletonFactory.sol";
+import "@matterlabs/zksync-contracts/l1-contracts/contracts/governance/Governance.sol";

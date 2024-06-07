@@ -67,11 +67,11 @@ contract BridgeableTokensUpgradable is Initializable {
     ///////////////////////////////////////
     //     Public/External Functions     //
     //////////////////////////////////////
-    function l1Token() internal view returns (address) {
+    function l1Token() external view returns (address) {
         return _loadBTState().l1Token;
     }
 
-    function l2Token() internal view returns (address) {
+    function l2Token() external view returns (address) {
         return _loadBTState().l2Token;
     }
 
