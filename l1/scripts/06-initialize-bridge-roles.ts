@@ -18,7 +18,6 @@ const zkProvider = zkSyncProvider();
 
 async function main() {
   const deployWallet = new Wallet(PRIVATE_KEY, provider);
-
   const zkWallet = new ZkSyncWallet(PRIVATE_KEY, zkProvider);
 
   console.log(`Using deployer wallet: ${deployWallet.address}`);
@@ -27,16 +26,9 @@ async function main() {
 
   console.log(`Using gas price: ${formatUnits(gasPrice, "gwei")} gwei`);
 
-  const deployer = new Deployer({
-    deployWallet,
-    verbose: true,
-  });
-
+  console.log("\n=============== L1 ===============");
   const l1Bridge = defaultL1Bridge(deployWallet);
-  const l2Bridge = defaultL2Bridge(deployWallet);
-
-  console.log("\n===============L1===============");
-  console.log(`Using L1 Bridge: ${l1Bridge.address}`);
+  console.log(`Setting up roles on the L1 Bridge ('${l1Bridge.address}')\n`);
 
   await grantRole(
     l1Bridge,
@@ -65,9 +57,13 @@ async function main() {
     "WITHDRAWALS_DISABLER_ROLE",
     [deployWallet.address]
   );
+  console.log("==================================");
 
-  console.log("\n===============L2===============");
-  console.log(`Using L2 Bridge: ${l2Bridge.address}`);
+  console.log("\n=============== L2 ===============");
+  const l2Bridge = defaultL2Bridge(zkWallet);
+  console.log(
+    `> Setting up roles on the L2 Bridge ('${l2Bridge.address}')...\n`
+  );
 
   await grantRole(
     l2Bridge,
@@ -96,6 +92,9 @@ async function main() {
     "WITHDRAWALS_DISABLER_ROLE",
     [deployWallet.address]
   );
+  console.log("==================================\n");
+
+  console.log("Roles on both bridges have been initialized.\n");
 }
 
 /**

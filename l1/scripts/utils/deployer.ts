@@ -75,7 +75,7 @@ export class Deployer {
     const l1BridgeContractProxy =
       await new TransparentUpgradeableProxy__factory(this.deployWallet).deploy(
         impl,
-        this.addresses.Governance, // TODO: Check if this is fine
+        this.addresses.Governance, // TODO: Temporary set governance as proxy admin, so that we can directly control the bridge via owner (since transparent proxy doesn't allow its admin to call implementation's functions)
         L1SharedBridge__factory.createInterface().encodeFunctionData(
           "initialize",
           [this.deployWallet.address, l1ERC20TokenAddress]

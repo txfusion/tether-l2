@@ -108,7 +108,7 @@ export class Deployer {
     }
 
     /// prepare proxyInitializationParams
-    const l2GovernorAddress = applyL1ToL2Alias(this.addresses.Governance);
+    const l2Admin = this.deployWallet.address; // applyL1ToL2Alias(this.addresses.Governance); // TODO: Check if governance should control L2 bridge
     const l2SharedBridgeInterface = new ethers.utils.Interface(
       hre.artifacts.readArtifactSync("L2SharedBridge").abi
     );
@@ -118,7 +118,7 @@ export class Deployer {
         l1SharedBridge.address,
         this.addresses.Tokens.L1Token,
         this.addresses.Tokens.L2Token,
-        l2GovernorAddress,
+        l2Admin,
       ]);
 
     /// prepare constructor data
@@ -127,7 +127,7 @@ export class Deployer {
         ["address", "address", "bytes"],
         [
           this.addresses.Bridges.L2SharedBridgeImplementation,
-          l2GovernorAddress,
+          this.addresses.Governance, // TODO: Temporary set governance as proxy admin, so that we can directly control the bridge via owner (since transparent proxy doesn't allow its admin to call implementation's functions)
           proxyInitializationParams,
         ]
       )
