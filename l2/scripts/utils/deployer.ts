@@ -1,18 +1,7 @@
-import { Wallet, ethers } from "ethers";
+import { BigNumber, Wallet, ethers } from "ethers";
 import * as hre from "hardhat";
 
-import {
-  IBridgehub__factory,
-  L1SharedBridge,
-  L1SharedBridge__factory,
-} from "../../../l1/typechain";
-import {
-  IERC20__factory,
-  L2SharedBridge,
-  L2SharedBridge__factory,
-  TetherZkSync,
-  TetherZkSync__factory,
-} from "../../typechain";
+import { IERC20__factory, IBridgehub__factory } from "../../../l1/typechain";
 
 import {
   DeployedAddresses,
@@ -22,6 +11,7 @@ import {
   deployedAddressesFromEnv,
   getNumberFromEnv,
   hashL2Bytecode,
+  defaultL1Bridge,
 } from "../../../common-utils";
 
 export const L2_SHARED_BRIDGE_ABI =
@@ -51,43 +41,13 @@ export class Deployer {
     this.verbose = config.verbose != null ? config.verbose : false;
   }
 
-  public defaultL1Bridge(
-    signerOrProvider: ethers.Signer | ethers.providers.Provider,
-    address?: string
-  ): L1SharedBridge {
-    return L1SharedBridge__factory.connect(
-      address || this.addresses.Bridges.L1SharedBridgeProxy,
-      signerOrProvider
-    );
-  }
-
-  public defaultL2Bridge(
-    signerOrProvider: ethers.Signer | ethers.providers.Provider,
-    address?: string
-  ): L2SharedBridge {
-    return L2SharedBridge__factory.connect(
-      address || this.addresses.Bridges.L2SharedBridgeProxy,
-      signerOrProvider
-    );
-  }
-
-  public tetherToken(
-    signerOrProvider: ethers.Signer | ethers.providers.Provider,
-    address?: string
-  ): TetherZkSync {
-    return TetherZkSync__factory.connect(
-      address || this.addresses.Tokens.L2Token,
-      signerOrProvider
-    );
-  }
-
   async deploySharedBridgeImplOnL2ThroughL1(
     chainId: string,
     gasPrice: ethers.BigNumberish,
     localLegacyBridgeTesting: boolean = false
   ) {
     if (this.verbose) {
-      console.log("Deploying L2SharedBridge Implementation");
+      console.log("Deploying L2SharedBridge implementation...");
     }
 
     const eraChainId = SYSTEM_CONFIG_CONSTANTS.ERA_CHAIN_ID;
@@ -96,8 +56,7 @@ export class Deployer {
     }
 
     if (this.verbose) {
-      console.log("L2_SHARED_BRIDGE_IMPLEMENTATION_BYTECODE loaded");
-      console.log("Computing L2SharedBridge Implementation Address");
+      console.log("Computing L2SharedBridge implementation's address...");
     }
 
     const l2SharedBridgeImplAddress = computeL2Create2Address(
@@ -113,10 +72,14 @@ export class Deployer {
     this.addresses.Bridges.L2SharedBridgeImplementation =
       l2SharedBridgeImplAddress;
 
+    if (this.verbose) {
+      console.log("Create2 address computed, attempting to deploy from L1...");
+    }
+
     // TODO: request from API how many L2 gas needs for the transaction.
     await (
       await this.create2DeployFromL1(
-        chainId,
+        BigNumber.from(chainId),
         this.deployWallet,
         L2_SHARED_BRIDGE_IMPLEMENTATION_BYTECODE,
         ethers.utils.defaultAbiCoder.encode(
@@ -139,7 +102,7 @@ export class Deployer {
     chainId: string,
     gasPrice: ethers.BigNumberish
   ) {
-    const l1SharedBridge = this.defaultL1Bridge(this.deployWallet);
+    const l1SharedBridge = defaultL1Bridge(this.deployWallet);
     if (this.verbose) {
       console.log("Deploying L2SharedBridge Proxy");
     }
@@ -188,7 +151,7 @@ export class Deployer {
     // TODO: request from API how many L2 gas needs for the transaction.
     await (
       await this.create2DeployFromL1(
-        chainId,
+        BigNumber.from(chainId),
         this.deployWallet,
         L2_SHARED_BRIDGE_PROXY_BYTECODE,
         l2SharedBridgeProxyConstructorData,
@@ -217,6 +180,7 @@ export class Deployer {
       this.addresses.Bridgehub.Proxy,
       wallet
     );
+
     const deployerSystemContracts = new ethers.utils.Interface(
       hre.artifacts.readArtifactSync("IContractDeployer").abi
     );

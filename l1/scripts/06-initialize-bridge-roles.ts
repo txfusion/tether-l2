@@ -7,6 +7,8 @@ import { HASHES } from "./utils/hashes";
 
 import {
   PRIVATE_KEY,
+  defaultL1Bridge,
+  defaultL2Bridge,
   ethereumProvider,
   zkSyncProvider,
 } from "../../common-utils";
@@ -30,8 +32,8 @@ async function main() {
     verbose: true,
   });
 
-  const l1Bridge = deployer.defaultL1Bridge(deployWallet);
-  const l2Bridge = deployer.defaultL2Bridge(deployWallet);
+  const l1Bridge = defaultL1Bridge(deployWallet);
+  const l2Bridge = defaultL2Bridge(deployWallet);
 
   console.log("\n===============L1===============");
   console.log(`Using L1 Bridge: ${l1Bridge.address}`);

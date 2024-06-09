@@ -26,11 +26,6 @@ async function main() {
     false
   );
 
-  // console.log(
-  //   `CONTRACTS_L2_TOKEN_IMPLEMENTATION_ADDR=${await erc20Bridged.implementation()}`
-  // );
-  // await verify(await erc20Bridged.implementation());
-
   console.log(`CONTRACTS_L2_TOKEN_PROXY_ADDR=${erc20Bridged.address}`);
   verifyContract(erc20Bridged.address, constructorParams);
 

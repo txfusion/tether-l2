@@ -40,26 +40,6 @@ export class Deployer {
     this.verbose = config.verbose != null ? config.verbose : false;
   }
 
-  public defaultL1Bridge(
-    signerOrProvider: Signer | providers.Provider,
-    address?: string
-  ): L1SharedBridge {
-    return L1SharedBridge__factory.connect(
-      address || this.addresses.Bridges.L1SharedBridgeProxy,
-      signerOrProvider
-    );
-  }
-
-  public defaultL2Bridge(
-    signerOrProvider: ethers.Signer | ethers.providers.Provider,
-    address?: string
-  ): L2SharedBridge {
-    return L2SharedBridge__factory.connect(
-      address || this.addresses.Bridges.L2SharedBridgeProxy,
-      signerOrProvider
-    );
-  }
-
   public async deploySharedBridgeImplementation(): Promise<string> {
     const chainId = getNumberFromEnv("CONTRACTS_CHAIN_ID");
 

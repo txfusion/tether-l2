@@ -2,7 +2,12 @@ import * as hre from "hardhat";
 import { Wallet, utils } from "zksync-ethers";
 
 import { Deployer } from "./utils/deployer";
-import { PRIVATE_KEY, zkSyncProvider } from "../../common-utils";
+import {
+  PRIVATE_KEY,
+  defaultL2Bridge,
+  tetherTokenL2,
+  zkSyncProvider,
+} from "../../common-utils";
 
 const provider = zkSyncProvider();
 
@@ -12,7 +17,7 @@ async function main() {
     verbose: true,
   });
 
-  const tokenContract = deployer.tetherToken(deployer.deployWallet);
+  const tokenContract = tetherTokenL2(deployer.deployWallet);
 
   const connectedBridgeAddress = await tokenContract.bridge();
   if (connectedBridgeAddress !== hre.ethers.constants.AddressZero) {
@@ -23,7 +28,7 @@ async function main() {
 
   await (
     await tokenContract.__TetherZkSync_init_v2(
-      deployer.defaultL2Bridge(deployer.deployWallet).address,
+      defaultL2Bridge(deployer.deployWallet).address,
       {
         maxFeePerGas: gasPrice,
         maxPriorityFeePerGas: 0,

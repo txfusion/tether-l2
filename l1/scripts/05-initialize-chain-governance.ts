@@ -3,8 +3,8 @@ import { Deployer } from "./utils/deployer";
 import {
   CHAIN_ID,
   PRIVATE_KEY,
+  defaultL1Bridge,
   ethereumProvider,
-  getNumberFromEnv,
 } from "../../common-utils";
 
 async function main() {
@@ -15,7 +15,7 @@ async function main() {
     verbose: true,
   });
 
-  const l1SharedBridge = deployer.defaultL1Bridge(deployer.deployWallet);
+  const l1SharedBridge = defaultL1Bridge(deployer.deployWallet);
 
   console.log("Initializing chain governance...");
 

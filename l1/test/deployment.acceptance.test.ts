@@ -3,14 +3,19 @@ import { assert } from "chai";
 
 import { HASHES } from "../scripts/utils/hashes";
 import { setup } from "./setup/deployment.setup";
-import { L2_ERC20_BRIDGED_CONSTANTS } from "../../l2/scripts/utils/constants";
-import { ZKSYNC_ADDRESSES } from "./utils/utils";
+import {
+  DeployedAddresses,
+  TETHER_CONSTANTS,
+  deployedAddressesFromEnv,
+} from "../../common-utils";
 
 describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () => {
   let ctx: Awaited<ReturnType<typeof setup>>;
+  let ADDRESSES: DeployedAddresses;
 
   before("Setting up the context", async () => {
     ctx = await setup();
+    ADDRESSES = deployedAddressesFromEnv();
   });
 
   describe("=== L1 Bridge ===", async () => {
@@ -40,7 +45,7 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
         l1: { l1Bridge },
       } = ctx;
 
-      assert.equal(await l1Bridge.l1Token(), ZKSYNC_ADDRESSES.l1.l1Token);
+      assert.equal(await l1Bridge.l1Token(), ADDRESSES.Tokens.L1Token);
     });
 
     it("*** L2 Token ***", async () => {
@@ -48,7 +53,7 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
         l1: { l1Bridge },
       } = ctx;
 
-      assert.equal(await l1Bridge.l2Token(), ZKSYNC_ADDRESSES.l2.l2Token);
+      assert.equal(await l1Bridge.l2Token(), ADDRESSES.Tokens.L2Token);
     });
 
     it("*** L2 Bridge ***", async () => {
@@ -56,7 +61,10 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
         l1: { l1Bridge },
       } = ctx;
 
-      assert.equal(await l1Bridge.l2Bridge(), ZKSYNC_ADDRESSES.l2.l2Bridge);
+      assert.equal(
+        await l1Bridge.l2Bridge(),
+        ADDRESSES.Bridges.L2SharedBridgeProxy
+      );
     });
 
     describe("*** Deposits ***", async () => {
@@ -173,7 +181,7 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
         l2: { l2Bridge },
       } = ctx;
 
-      assert.equal(await l2Bridge.l1Token(), ZKSYNC_ADDRESSES.l1.l1Token);
+      assert.equal(await l2Bridge.l1Token(), ADDRESSES.Tokens.L1Token);
     });
 
     it("** L2 Token ***", async () => {
@@ -181,7 +189,7 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
         l2: { l2Bridge },
       } = ctx;
 
-      assert.equal(await l2Bridge.l2Token(), ZKSYNC_ADDRESSES.l2.l2Token);
+      assert.equal(await l2Bridge.l2Token(), ADDRESSES.Tokens.L2Token);
     });
 
     it("** L1 Bridge ***", async () => {
@@ -189,7 +197,10 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
         l2: { l2Bridge },
       } = ctx;
 
-      assert.equal(await l2Bridge.l1Bridge(), ZKSYNC_ADDRESSES.l1.l1Bridge);
+      assert.equal(
+        await l2Bridge.l1Bridge(),
+        ADDRESSES.Bridges.L1SharedBridgeProxy
+      );
     });
 
     describe("*** Deposits ***", async () => {
@@ -293,7 +304,7 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
         l2: { l2Token },
       } = ctx;
 
-      assert.equal(await l2Token.name(), L2_ERC20_BRIDGED_CONSTANTS.NAME);
+      assert.equal(await l2Token.name(), TETHER_CONSTANTS.NAME);
     });
 
     it("*** Symbol *** ", async () => {
@@ -301,7 +312,7 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
         l2: { l2Token },
       } = ctx;
 
-      assert.equal(await l2Token.symbol(), L2_ERC20_BRIDGED_CONSTANTS.SYMBOL);
+      assert.equal(await l2Token.symbol(), TETHER_CONSTANTS.SYMBOL);
     });
 
     it("*** Decimals *** ", async () => {
@@ -309,10 +320,7 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
         l2: { l2Token },
       } = ctx;
 
-      assert.equal(
-        await l2Token.decimals(),
-        L2_ERC20_BRIDGED_CONSTANTS.DECIMALS
-      );
+      assert.equal(await l2Token.decimals(), TETHER_CONSTANTS.DECIMALS);
     });
 
     it("*** Total supply *** ", async () => {
@@ -328,7 +336,10 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
         l2: { l2Token },
       } = ctx;
 
-      assert.equal(await l2Token.bridge(), ZKSYNC_ADDRESSES.l2.l2Bridge);
+      assert.equal(
+        await l2Token.bridge(),
+        ADDRESSES.Bridges.L2SharedBridgeProxy
+      );
     });
   });
 });

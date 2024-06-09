@@ -5,6 +5,8 @@ import { formatUnits } from "ethers/lib/utils";
 import { Deployer } from "./utils/deployer";
 import {
   PRIVATE_KEY,
+  defaultL1Bridge,
+  defaultL2Bridge,
   ethereumProvider,
   zkSyncProvider,
 } from "./../../common-utils";
@@ -26,8 +28,8 @@ async function main() {
     verbose: true,
   });
 
-  const l1Bridge = deployer.defaultL1Bridge(deployWallet);
-  const l2Bridge = deployer.defaultL2Bridge(deployWallet);
+  const l1Bridge = defaultL1Bridge(deployWallet);
+  const l2Bridge = defaultL2Bridge(deployWallet);
 
   const isWithdrawalEnabledOnL1 = await l1Bridge.isWithdrawalsEnabled();
   const isWithdrawalEnabledOnL2 = await l2Bridge.isWithdrawalsEnabled();

@@ -64,8 +64,6 @@ printf "\n> (1) Deploying L1 bridge...\n\n"
 # DEPLOY L1 BRIDGE
 output=$(npm run 01-deploy-l1-bridge)
 
-
-## CONTRACTS_L1_TOKEN_ADDR
 if [ "$NODE_ENV" = "local" ]; then
 	formatAndAppendOrUpdate "$output" "CONTRACTS_L1_TOKEN_ADDR"
 else
