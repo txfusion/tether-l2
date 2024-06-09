@@ -15,7 +15,6 @@ import { ZKSYNC_ADDRESSES } from "./../utils/utils";
 import { IZkSyncFactory } from "zksync-ethers/build/typechain";
 
 const ETH_CLIENT_WEB3_URL = process.env.ETH_CLIENT_WEB3_URL as string;
-const ZKSYNC_PROVIDER_URL = process.env.ZKSYNC_PROVIDER_URL as string;
 const CONTRACTS_DIAMOND_PROXY_ADDR = process.env
   .CONTRACTS_DIAMOND_PROXY_ADDR as string;
 
@@ -25,7 +24,7 @@ export async function setup() {
     l2: { l2Token, l2Bridge },
   } = ZKSYNC_ADDRESSES;
 
-  const zkProvider = new Provider(ZKSYNC_PROVIDER_URL);
+  const zkProvider = zkSyncProvider();
   const ethProvider = new JsonRpcProvider(ETH_CLIENT_WEB3_URL);
 
   const ethDeployer = new Wallet(

@@ -58,11 +58,11 @@ appendOrUpdate(){
 
 cd ./l1
 
-echo "DEPLOYING L1 BRIDGE"
-echo "======================="
+printf "\n========================================="
+printf "\n> (1) Deploying L1 bridge...\n\n"
 
 # DEPLOY L1 BRIDGE
-output=$(npm run deploy-bridges)
+output=$(npm run 01-deploy-l1-bridge)
 
 
 ## CONTRACTS_L1_TOKEN_ADDR
@@ -72,36 +72,37 @@ else
     echo 'Skipping L1 ERC20 Token deployment. Token already exists.'
 fi
 
-## CONTRACTS_L1_SHARED_BRIDGE_PROXY_ADDR
+formatAndAppendOrUpdate "$output" "CONTRACTS_L1_SHARED_BRIDGE_IMPLEMENTATION_ADDR"
 formatAndAppendOrUpdate "$output" "CONTRACTS_L1_SHARED_BRIDGE_PROXY_ADDR"
 
 cd ../l2
 
-echo "==============================="
-echo "DEPLOYING USDT TOKEN"
+printf "\n========================================="
+printf "\n> (2) Deploying L2 USDT token...\n\n"
 
-output=$(npm run deploy-usdt-token)
-formatAndAppendOrUpdate "$output" "CONTRACTS_L2_TOKEN_IMPLEMENTATION_ADDR" # most likely won't be used anymore
+output=$(npm run 02-deploy-usdt-token)
 formatAndAppendOrUpdate "$output" "CONTRACTS_L2_TOKEN_PROXY_ADDR"
 
-cd ../l1
+printf "\n========================================="
+printf "\n> (3) Deploying L2 bridge...\n\n"
 
-echo "==============================="
-echo "INITIALIZING BRIDGES"
+output=$(npm run 03-deploy-l2-bridge)
+formatAndAppendOrUpdate "$output" "CONTRACTS_L2_SHARED_BRIDGE_IMPL_ADDR"
+formatAndAppendOrUpdate "$output" "CONTRACTS_L2_SHARED_BRIDGE_PROXY_ADDR"
 
-output=$(npm run initialize-bridges)
-formatAndAppendOrUpdate "$output" "CONTRACTS_L2_BRIDGE_PROXY_ADDR"
+printf "\n========================================="
+printf "\n> (4) Connecting L2 bridge to L2 token...\n\n"
 
-cd ../l2
-
-echo "==============================="
-echo "CONNECTING L2 BRIDGE TO L2 TOKEN"
-
-npm run connect-token-to-bridge
+npm run 04-connect-token-to-bridge
 
 cd ../l1
 
-echo "==============================="
-echo "INITIALIZING BRIDGE ROLES"
+printf "\n========================================="
+printf "\n> (5) Initializing L1 governance...\n\n"
 
-npm run init-bridge-roles
+npm run 05-initialize-chain-governance
+
+printf "\n========================================="
+printf "\n> (6) Initializing bridge roles...\n\n"
+
+npm run 06-initialize-bridge-roles

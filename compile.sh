@@ -1,14 +1,19 @@
 #!/bin/bash
 
-echo "COMPILE L1 CONTRACTS"
+echo "+---------------------------------+"
+echo "|                                 |"
+echo "|    Compiling L1 contracts...    |"
+echo "|                                 |"
+echo "+---------------------------------+"
 
-cd ./l1
+cd ./l1 && npm run compile
 
-npm run compile
+printf "\n\n"
 
-echo "COMPILE L2 CONTRACTS"
+echo "+---------------------------------+"
+echo "|                                 |"
+echo "|    Compiling L2 contracts...    |"
+echo "|                                 |"
+echo "+---------------------------------+"
 
-cd ../l2
-
-npm run compile
-
+cd ../l2 && npm run compile

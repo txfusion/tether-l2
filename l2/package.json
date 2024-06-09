@@ -3,11 +3,10 @@
   "version": "0.1.0",
   "scripts": {
     "compile": "hardhat clean && hardhat compile && ts-node utils/generateTypings.ts",
-    "deploy-governance-bridge": "hardhat run ./scripts/deploy-governance-bridge.ts",
-    "deploy-usdt-token": "hardhat run ./scripts/deploy-usdt-token.ts",
+    "02-deploy-usdt-token": "hardhat run ./scripts/02-deploy-usdt-token.ts",
+    "03-deploy-l2-bridge": "hardhat run ./scripts/03-deploy-l2-bridge.ts",
+    "04-connect-token-to-bridge": "hardhat run ./scripts/04-connect-token-to-bridge.ts",
     "upgrade-usdt-token": "hardhat run ./scripts/upgrade-usdt-token.ts",
-    "connect-token-to-bridge": "hardhat run ./scripts/connect-token-to-bridge.ts",
-    "verify-l2-bridge": "hardhat run ./scripts/verify-l2-bridge.ts",
     "test": "hardhat test ./test/*.test.ts",
     "test:unit": "hardhat test ./test/*.unit.test.ts",
     "test:unit:bridge": "hardhat test ./test/L2ERC20Bridge.unit.test.ts",
@@ -25,6 +24,6 @@
     "@nomiclabs/hardhat-waffle": "^2.0.6",
     "chai": "^4.3.7",
     "typechain": "^8.2.0",
-    "@matterlabs/zksync-contracts": "github:matter-labs/era-contracts#994897b14eb1d8e77c809da2db3379e7b58125b5"
+    "@matterlabs/zksync-contracts": "^0.6.1"
   }
 }

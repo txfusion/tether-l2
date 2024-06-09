@@ -1,31 +1,28 @@
 import { Deployer } from "@matterlabs/hardhat-zksync-deploy";
 import { Wallet } from "zksync-ethers";
 import * as hre from "hardhat";
-
 import {
-  ADDRESSES,
-  L2_ERC20_BRIDGED_CONSTANTS,
   PRIVATE_KEY,
-} from "./utils/constants";
-import { verify } from "./utils/verify";
+  TETHER_CONSTANTS,
+  deployedAddressesFromEnv,
+  verifyContract,
+} from "../../common-utils";
 
 export async function main() {
-  console.info(
-    "~~~ Upgrading " + L2_ERC20_BRIDGED_CONSTANTS.CONTRACT_NAME + " ~~~"
-  );
+  console.info("~~~ Upgrading " + TETHER_CONSTANTS.L2_CONTRACT_NAME + " ~~~");
 
   const deployer = new Deployer(hre, new Wallet(PRIVATE_KEY));
 
   const newERC20Bridged = await hre.zkUpgrades.upgradeProxy(
     deployer.zkWallet,
-    ADDRESSES.L2_TOKEN_ADDR,
-    await deployer.loadArtifact(L2_ERC20_BRIDGED_CONSTANTS.CONTRACT_NAME) // TODO: Add new upgraded artifact
+    deployedAddressesFromEnv().Tokens.L2Token,
+    await deployer.loadArtifact(TETHER_CONSTANTS.L2_CONTRACT_NAME) // TODO: Add new upgraded artifact's name
   );
 
   // TODO: Initialize new implementation
 
   console.log(`~~~ New USDT implementation has been deployed ~~~`);
-  await verify(newERC20Bridged.address);
+  verifyContract(newERC20Bridged.address);
 
   return newERC20Bridged.address;
 }

@@ -1,4 +1,4 @@
-export const richWallet = [
+export const richWallets = [
   {
     address: "0x36615Cf349d7F6344891B1e7CA7C72883F5dc049",
     privateKey:

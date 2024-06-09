@@ -3,10 +3,9 @@
   "version": "0.1.0",
   "scripts": {
     "compile": "hardhat clean && hardhat compile && ts-node utils/generateTypings.ts",
-    "deploy-l1": "hardhat run scripts/01-deploy-l1-bridge.ts",
-    "deploy-bridges": "hardhat run scripts/deploy-bridges.ts",
-    "initialize-bridges": "hardhat run scripts/initialize-bridges.ts",
-    "init-bridge-roles": "hardhat run scripts/initialize-bridge-roles.ts",
+    "01-deploy-l1-bridge": "hardhat run scripts/01-deploy-l1-bridge.ts",
+    "05-initialize-chain-governance": "hardhat run scripts/05-initialize-chain-governance.ts",
+    "06-initialize-bridge-roles": "hardhat run scripts/06-initialize-bridge-roles.ts",
     "enable-deposits": "hardhat run scripts/enable-deposits.ts",
     "disable-deposits": "hardhat run scripts/disable-deposits.ts",
     "enable-withdrawals": "hardhat run scripts/enable-withdrawals.ts",

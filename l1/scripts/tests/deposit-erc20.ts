@@ -3,8 +3,8 @@ import * as ethers from "ethers";
 import * as path from "path";
 import {
   getAddressFromEnv,
-  web3Provider,
-  zkSyncUrl,
+  ethereumProvider,
+  zkSyncClientURL,
   readInterface,
 } from "../utils/utils";
 import { L2_ERC20_BRIDGED_CONSTANTS } from "../../../l2/scripts/utils/constants";
@@ -40,11 +40,9 @@ const L2_TOKEN_INTERFACE = readInterface(
 
 const AMOUNT_TO_DEPOSIT = ethers.utils.parseEther("0.001");
 
-const PRIVATE_KEY = process.env.PRIVATE_KEY as string;
-
-const provider = web3Provider();
+const provider = ethereumProvider();
 const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
-const zkProvider = new Provider(zkSyncUrl());
+const zkProvider = new Provider(zkSyncClientURL());
 const zkWallet = new Wallet(PRIVATE_KEY, zkProvider, provider);
 
 async function main() {
