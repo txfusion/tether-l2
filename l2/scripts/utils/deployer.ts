@@ -6,7 +6,6 @@ import { IERC20__factory, IBridgehub__factory } from "../../../l1/typechain";
 import {
   DeployedAddresses,
   SYSTEM_CONFIG_CONSTANTS,
-  applyL1ToL2Alias,
   computeL2Create2Address,
   deployedAddressesFromEnv,
   getNumberFromEnv,
@@ -14,8 +13,6 @@ import {
   defaultL1Bridge,
 } from "../../../common-utils";
 
-export const L2_SHARED_BRIDGE_ABI =
-  hre.artifacts.readArtifactSync("L2SharedBridge").abi;
 export const L2_SHARED_BRIDGE_IMPLEMENTATION_BYTECODE =
   hre.artifacts.readArtifactSync("L2SharedBridge").bytecode;
 

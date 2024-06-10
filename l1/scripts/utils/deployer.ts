@@ -1,21 +1,11 @@
 import "@nomiclabs/hardhat-ethers";
-import {
-  BigNumber,
-  BigNumberish,
-  Signer,
-  Wallet,
-  ethers,
-  providers,
-} from "ethers";
+import { BigNumber, BigNumberish, Wallet, ethers, providers } from "ethers";
 
 import {
   Governance__factory,
-  L1SharedBridge,
   L1SharedBridge__factory,
   TransparentUpgradeableProxy__factory,
 } from "../../typechain";
-import { L2SharedBridge, L2SharedBridge__factory } from "../../../l2/typechain";
-import { IZkSync__factory } from "../../typechain/factories/@matterlabs/zksync-contracts/l1/contracts/zksync/interfaces";
 
 import {
   DeployedAddresses,
