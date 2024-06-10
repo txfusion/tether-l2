@@ -19,3 +19,5 @@ artifacts-zk
 
 .DS_Store
 .vscode
+
+*.tgz

@@ -1,8 +1,8 @@
 import { ethers } from "ethers";
 
 import {
-  ERC20,
-  ERC20__factory,
+  ERC20Token,
+  ERC20Token__factory,
   L1SharedBridge,
   L1SharedBridge__factory,
 } from "./../l1/typechain";
@@ -34,8 +34,8 @@ export function defaultL2Bridge(
 
 export function tetherTokenL1(
   signerOrProvider: ethers.Signer | ethers.providers.Provider
-): ERC20 {
-  return ERC20__factory.connect(
+): ERC20Token {
+  return ERC20Token__factory.connect(
     deployedAddressesFromEnv().Tokens.L2Token,
     signerOrProvider
   );

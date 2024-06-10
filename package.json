@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "clean-install": "rm -rf node_modules l1/node_modules l2/node_modules package-lock.json l1/package-lock.json l2/package-lock.json l1/typechain l2/typechain && npm i --force && cd l1 && npm i --force && cd ../l2 && npm i --force && cd .. && npm run compile",
     "all": "npm run compile && npm run deploy && npm run test",
     "compile": "sh ./compile.sh",
     "deploy": "sh ./deploy.sh",
@@ -23,7 +24,7 @@
     "@types/mocha": "^9.1.1",
     "@types/node": "^12.20.47",
     "chai": "^4.3.6",
-    "dotenv": "^10.0.0",
+    "dotenv": "^16.2.0",
     "ethereum-waffle": "^3.4.4",
     "ethers": "^5.6.2",
     "hardhat": "^2.9.9",
@@ -35,6 +36,6 @@
     "@openzeppelin/contracts": "^4.9.5",
     "@openzeppelin/contracts-upgradeable": "^4.9.0",
     "@matterlabs/zksync-contracts": "github:matter-labs/era-contracts#994897b14eb1d8e77c809da2db3379e7b58125b5",
-    "zksync-ethers": "5.0.0"
+    "zksync-ethers": "5.8.0"
   }
 }
