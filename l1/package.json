@@ -9,6 +9,7 @@
     "enable-deposits": "hardhat run scripts/enable-deposits.ts",
     "disable-deposits": "hardhat run scripts/disable-deposits.ts",
     "enable-withdrawals": "hardhat run scripts/enable-withdrawals.ts",
+    "disable-withdrawals": "hardhat run scripts/disable-withdrawals.ts",
     "test-deposit": "hardhat run scripts/tests/deposit-erc20.ts",
     "test-withdraw": "hardhat run scripts/tests/withdraw-erc20.ts",
     "upgrade-l2-token": "hardhat run scripts/tests/upgrade-l2-token.ts",
