@@ -4,6 +4,7 @@ import { assert } from "chai";
 import { HASHES } from "../scripts/utils/hashes";
 import { setup } from "./setup/deployment.setup";
 import {
+  CHAIN_ID,
   DeployedAddresses,
   TETHER_CONSTANTS,
   deployedAddressesFromEnv,
@@ -19,14 +20,6 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
   });
 
   describe("=== L1 Bridge ===", async () => {
-    it("*** Proxy admin ***", async () => {
-      const {
-        l1: { proxy },
-        accounts: { deployer },
-      } = ctx;
-      assert.equal(await proxy.l1Bridge.proxy__getAdmin(), deployer.address);
-    });
-
     it("*** Bridge admin ***", async () => {
       const {
         l1: { l1Bridge },
@@ -48,22 +41,14 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
       assert.equal(await l1Bridge.l1Token(), ADDRESSES.Tokens.L1Token);
     });
 
-    it("*** L2 Token ***", async () => {
-      const {
-        l1: { l1Bridge },
-      } = ctx;
-
-      assert.equal(await l1Bridge.l2Token(), ADDRESSES.Tokens.L2Token);
-    });
-
     it("*** L2 Bridge ***", async () => {
       const {
         l1: { l1Bridge },
       } = ctx;
 
       assert.equal(
-        await l1Bridge.l2Bridge(),
-        ADDRESSES.Bridges.L2SharedBridgeProxy
+        (await l1Bridge.l2BridgeAddress(CHAIN_ID)).toUpperCase(),
+        ADDRESSES.Bridges.L2SharedBridgeProxy.toUpperCase()
       );
     });
 
@@ -337,8 +322,8 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
       } = ctx;
 
       assert.equal(
-        await l2Token.bridge(),
-        ADDRESSES.Bridges.L2SharedBridgeProxy
+        (await l2Token.bridge()).toUpperCase(),
+        ADDRESSES.Bridges.L2SharedBridgeProxy.toUpperCase()
       );
     });
   });

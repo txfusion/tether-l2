@@ -8,9 +8,9 @@ import {
 } from "../../typechain";
 
 import {
+  CHAIN_ID,
   DeployedAddresses,
   deployedAddressesFromEnv,
-  getNumberFromEnv,
   verifyContract,
 } from "../../../common-utils";
 
@@ -31,14 +31,12 @@ export class Deployer {
   }
 
   public async deploySharedBridgeImplementation(): Promise<string> {
-    const chainId = getNumberFromEnv("CONTRACTS_CHAIN_ID");
-
     const l1SharedBridgeContractImpl = await new L1SharedBridge__factory(
       this.deployWallet
     ).deploy(
       this.addresses.Bridgehub.Proxy, // not used: WETH address
       this.addresses.Bridgehub.Proxy,
-      BigNumber.from(chainId),
+      BigNumber.from(CHAIN_ID),
       this.addresses.StateTransition.DiamondProxy
     );
 
@@ -51,7 +49,7 @@ export class Deployer {
     verifyContract(l1SharedBridgeContractImpl.address, [
       this.addresses.Bridgehub.Proxy, // not used: WETH address
       this.addresses.Bridgehub.Proxy,
-      BigNumber.from(chainId),
+      BigNumber.from(CHAIN_ID),
       this.addresses.StateTransition.DiamondProxy,
     ]);
 

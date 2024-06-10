@@ -1,48 +1,44 @@
-import { JsonRpcProvider } from "@ethersproject/providers";
-import { Wallet } from "ethers";
-import { Provider, Wallet as ZkWallet } from "zksync-ethers";
-import { L1ERC20Bridge__factory, ERC20Token__factory } from "../../typechain";
+import { Wallet as ZkWallet } from "zksync-ethers";
+import { Wallet, utils } from "ethers";
 import {
-  TetherZkSync__factory,
-  L2ERC20Bridge__factory,
-} from "../../../l2/typechain";
-import { ZKSYNC_ADDRESSES } from "./../utils/utils";
-import { parseEther } from "ethers/lib/utils";
-import { IZkSyncFactory } from "zksync-ethers/build/typechain";
-
-const ETH_CLIENT_WEB3_URL = process.env.ETH_CLIENT_WEB3_URL as string;
-const CONTRACTS_DIAMOND_PROXY_ADDR = process.env
-  .CONTRACTS_DIAMOND_PROXY_ADDR as string;
+  PRIVATE_KEY,
+  defaultL1Bridge,
+  defaultL2Bridge,
+  deployedAddressesFromEnv,
+  ethereumProvider,
+  tetherTokenL1,
+  tetherTokenL2,
+  zkSyncProvider,
+} from "../../../common-utils";
 
 export async function setup() {
-  const { l1, l2 } = ZKSYNC_ADDRESSES;
-
+  const ethProvider = ethereumProvider();
   const zkProvider = zkSyncProvider();
-  const ethProvider = new JsonRpcProvider(ETH_CLIENT_WEB3_URL);
 
   const ethDeployer = new Wallet(PRIVATE_KEY as string, ethProvider);
   const deployer = new ZkWallet(PRIVATE_KEY as string, zkProvider, ethProvider);
 
   return {
     l1: {
-      l1Token: new ERC20Token__factory(ethDeployer).attach(l1.l1Token),
-      l1Bridge: new L1ERC20Bridge__factory(ethDeployer).attach(l1.l1Bridge),
-      zkSync: IZkSyncFactory.connect(CONTRACTS_DIAMOND_PROXY_ADDR, ethDeployer),
+      l1Token: tetherTokenL1(ethDeployer),
+      l1Bridge: defaultL1Bridge(ethDeployer),
+      bridgehub: deployer.getBridgehubContract(),
       accounts: {
         deployer: ethDeployer,
       },
     },
     l2: {
-      l2Token: new TetherZkSync__factory(deployer).attach(l2.l2Token),
-      l2Bridge: new L2ERC20Bridge__factory(deployer).attach(l2.l2Bridge),
+      l2Token: tetherTokenL2(deployer),
+      l2Bridge: defaultL2Bridge(deployer),
       accounts: {
         deployer,
       },
     },
     zkProvider,
     ethProvider,
-    depositAmount: parseEther("0.025"),
-    withdrawalAmount: parseEther("0.025"),
+    depositAmount: utils.parseEther("0.025"),
+    withdrawalAmount: utils.parseEther("0.025"),
     gasLimit: 10_000_000,
+    ADDRESSES: deployedAddressesFromEnv(),
   };
 }

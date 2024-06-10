@@ -36,7 +36,7 @@ export function tetherTokenL1(
   signerOrProvider: ethers.Signer | ethers.providers.Provider
 ): ERC20Token {
   return ERC20Token__factory.connect(
-    deployedAddressesFromEnv().Tokens.L2Token,
+    deployedAddressesFromEnv().Tokens.L1Token,
     signerOrProvider
   );
 }

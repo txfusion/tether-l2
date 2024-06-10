@@ -69,7 +69,7 @@ contract L2SharedBridge is
 
         __BridgeableTokens_init();
         _setL1Token(_l1Token);
-        _setL2Token(_l1Token);
+        _setL2Token(_l2Token);
 
         __Ownable_init();
         transferOwnership(_aliasedOwner);

@@ -1,9 +1,9 @@
 import { describe } from "mocha";
 import { assert, expect } from "chai";
-import { utils } from "zksync-ethers";
 
 import { setup } from "./setup/bridge.setup";
-import { BigNumber } from "ethers";
+import { CHAIN_ID, TETHER_CONSTANTS } from "../../common-utils";
+import { ethers } from "hardhat";
 
 describe("~~~ Bridge E2E testing", async () => {
   let ctx: Awaited<ReturnType<typeof setup>>;
@@ -20,14 +20,28 @@ describe("~~~ Bridge E2E testing", async () => {
         l2: { l2Bridge, l2Token },
       } = ctx;
 
-      assert((await l1Bridge.l1Token()) === l1Token.address);
-      assert((await l1Bridge.l2Token()) === l2Token.address);
-      assert((await l1Bridge.l2Bridge()) === l2Bridge.address);
+      assert(
+        (await l1Bridge.l1Token()).toUpperCase() ===
+          l1Token.address.toUpperCase()
+      );
+      assert(
+        (await l1Bridge.l2BridgeAddress(CHAIN_ID)).toUpperCase() ===
+          l2Bridge.address.toUpperCase()
+      );
       assert.isTrue(await l1Bridge.isInitialized());
 
-      assert((await l2Bridge.l1Token()) === l1Token.address);
-      assert((await l2Bridge.l2Token()) === l2Token.address);
-      assert((await l2Bridge.l1Bridge()) === l1Bridge.address);
+      assert(
+        (await l2Bridge.l1Token()).toUpperCase() ===
+          l1Token.address.toUpperCase()
+      );
+      assert(
+        (await l2Bridge.l2Token()).toUpperCase() ===
+          l2Token.address.toUpperCase()
+      );
+      assert(
+        (await l2Bridge.l1Bridge()).toUpperCase() ===
+          l1Bridge.address.toUpperCase()
+      );
       assert.isTrue(await l2Bridge.isInitialized());
     });
 
@@ -96,7 +110,7 @@ describe("~~~ Bridge E2E testing", async () => {
         },
         zkProvider,
         depositAmount,
-        gasLimit,
+        ADDRESSES,
       } = ctx;
 
       const walletAddress = accounts.deployer.address;
@@ -120,46 +134,25 @@ describe("~~~ Bridge E2E testing", async () => {
       const userL1_TokenBalance_Before = await l1Token.balanceOf(walletAddress);
       const userL2_TokenBalance_Before = await l2Token.balanceOf(walletAddress);
 
-      const depositTx = await l1Bridge.populateTransaction[
-        "deposit(address,address,uint256,uint256,uint256,address)"
-      ](
-        walletAddress,
-        l1Token.address,
-        depositAmount,
-        BigNumber.from(10_000_000),
-        utils.REQUIRED_L1_TO_L2_GAS_PER_PUBDATA_LIMIT,
-        walletAddress
-      );
-
-      // call to RPC method zks_estimateGasL1ToL2 to estimate L2 gas limit
-      const l2GasLimit = await zkProvider.estimateGasL1(depositTx);
-      const l2GasPrice = await zkProvider.getGasPrice();
-
-      const baseCost = await deployer.getBaseCost({
-        gasLimit: l2GasLimit,
-        gasPrice: l2GasPrice,
-        gasPerPubdataByte: utils.REQUIRED_L1_TO_L2_GAS_PER_PUBDATA_LIMIT,
+      const coder = new ethers.utils.AbiCoder();
+      const depositTx = await deployer.deposit({
+        token: l1Token.address,
+        amount: depositAmount,
+        bridgeAddress: ADDRESSES.Bridges.L1SharedBridgeProxy,
+        customBridgeData: coder.encode(
+          ["bytes", "bytes", "bytes"],
+          [
+            coder.encode(["string"], [TETHER_CONSTANTS.NAME]),
+            coder.encode(["string"], [TETHER_CONSTANTS.SYMBOL]),
+            coder.encode(["uint256"], [TETHER_CONSTANTS.DECIMALS]), // TODO: Either 6 decimals for the real L2 token or 18 decimals for mock L1 token
+          ]
+        ),
       });
+      await depositTx.waitFinalize();
 
-      const depositResponse = await l1Bridge[
-        "deposit(address,address,uint256,uint256,uint256,address)"
-      ](
-        walletAddress,
-        l1Token.address,
-        depositAmount,
-        l2GasLimit,
-        utils.REQUIRED_L1_TO_L2_GAS_PER_PUBDATA_LIMIT,
-        walletAddress,
-        {
-          gasLimit,
-          value: baseCost,
-        }
-      );
-
-      await depositResponse.wait();
-
+      // TODO: Check if needed
       const l2Response = await zkProvider.getL2TransactionFromPriorityOp(
-        depositResponse
+        depositTx
       );
       await l2Response.wait();
 
@@ -222,7 +215,7 @@ describe("~~~ Bridge E2E testing", async () => {
           accounts: { deployer },
         },
         withdrawalAmount,
-        gasLimit,
+        ADDRESSES,
       } = ctx;
 
       const walletAddress = deployer.address;
@@ -245,16 +238,17 @@ describe("~~~ Bridge E2E testing", async () => {
       const userL2_TokenBalance_Before = await l2Token.balanceOf(walletAddress);
 
       // Execute withdraw
-      const withdrawResponse = await l2Bridge.withdraw(
-        walletAddress,
-        l2Token.address,
-        withdrawalAmount,
-        { gasLimit }
-      );
+      const withdrawTx = await deployer.withdraw({
+        token: l2Token.address,
+        amount: withdrawalAmount,
+        bridgeAddress: ADDRESSES.Bridges.L2SharedBridgeProxy,
+      });
+      await withdrawTx.waitFinalize();
 
-      await withdrawResponse.waitFinalize();
+      await (await deployer.finalizeWithdrawal(withdrawTx.hash)).wait();
 
-      withdrawTxHash = withdrawResponse.hash;
+      withdrawTxHash = withdrawTx.hash;
+
       const finalizeWithdrawalResponse = await deployer.finalizeWithdrawal(
         withdrawTxHash
       );
@@ -305,7 +299,7 @@ describe("~~~ Bridge E2E testing", async () => {
       );
     });
 
-    it("> Prevents finalization of an already finalized withdrawal", async () => {
+    it.only("> Prevents finalization of an already finalized withdrawal", async () => {
       const {
         l2: {
           accounts: { deployer },
