@@ -14,7 +14,7 @@ async function main() {
     filesToProcess: allFiles,
     allFiles,
     outDir: "./typechain",
-    target: "ethers-v5",
+    target: "ethers-v6",
   });
 
   console.log(result);

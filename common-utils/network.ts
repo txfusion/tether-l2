@@ -7,7 +7,7 @@ export function ethereumClientURL() {
 }
 
 export function ethereumProvider() {
-  const provider = new ethers.providers.JsonRpcProvider(ethereumClientURL());
+  const provider = ethers.getDefaultProvider(ethereumClientURL());
 
   // Check that `CHAIN_ETH_NETWORK` variable is set. If not, it's most likely because
   // the variable was renamed. As this affects the time to deploy contracts in localhost
@@ -18,9 +18,9 @@ export function ethereumProvider() {
   }
 
   // Short polling interval for local network
-  if (network === "localhost") {
-    provider.pollingInterval = 100;
-  }
+  // if (network === "localhost") {
+  //   provider.pollingInterval = 100;
+  // }
 
   return provider;
 }

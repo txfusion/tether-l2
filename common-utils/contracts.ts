@@ -1,8 +1,9 @@
 import { ethers } from "ethers";
+import { Wallet } from "zksync-ethers";
 
 import {
-  ERC20,
-  ERC20__factory,
+  ERC20Token,
+  ERC20Token__factory,
   L1SharedBridge,
   L1SharedBridge__factory,
 } from "./../l1/typechain";
@@ -15,7 +16,7 @@ import {
 import { deployedAddressesFromEnv } from "./addresses";
 
 export function defaultL1Bridge(
-  signerOrProvider: ethers.Signer | ethers.providers.Provider
+  signerOrProvider: ethers.Wallet | Wallet | ethers.Signer | ethers.Provider
 ): L1SharedBridge {
   return L1SharedBridge__factory.connect(
     deployedAddressesFromEnv().Bridges.L1SharedBridgeProxy,
@@ -24,7 +25,7 @@ export function defaultL1Bridge(
 }
 
 export function defaultL2Bridge(
-  signerOrProvider: ethers.Signer | ethers.providers.Provider
+  signerOrProvider: ethers.Wallet | Wallet | ethers.Signer | ethers.Provider
 ): L2SharedBridge {
   return L2SharedBridge__factory.connect(
     deployedAddressesFromEnv().Bridges.L2SharedBridgeProxy,
@@ -33,16 +34,16 @@ export function defaultL2Bridge(
 }
 
 export function tetherTokenL1(
-  signerOrProvider: ethers.Signer | ethers.providers.Provider
-): ERC20 {
-  return ERC20__factory.connect(
+  signerOrProvider: ethers.Wallet | Wallet | ethers.Signer | ethers.Provider
+): ERC20Token {
+  return ERC20Token__factory.connect(
     deployedAddressesFromEnv().Tokens.L2Token,
     signerOrProvider
   );
 }
 
 export function tetherTokenL2(
-  signerOrProvider: ethers.Signer | ethers.providers.Provider
+  signerOrProvider: ethers.Wallet | Wallet | ethers.Signer | ethers.Provider
 ): TetherZkSync {
   return TetherZkSync__factory.connect(
     deployedAddressesFromEnv().Tokens.L2Token,

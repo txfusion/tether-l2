@@ -1,82 +1,77 @@
-import { Wallet, Provider, Contract } from "zksync-ethers";
-import * as ethers from "ethers";
-import * as path from "path";
+import { Wallet as ZkWallet } from "zksync-ethers";
+import { Wallet, utils } from "ethers";
 import {
+  CHAIN_ID,
   PRIVATE_KEY,
   defaultL1Bridge,
-  defaultL2Bridge,
   ethereumProvider,
   tetherTokenL1,
   tetherTokenL2,
-  zkSyncClientURL,
+  zkSyncProvider,
+  SYSTEM_CONFIG_CONSTANTS,
+  TETHER_CONSTANTS,
+  deployedAddressesFromEnv,
 } from "../../../common-utils";
 
-const l1ArtifactsPath = path.join(
-  path.resolve(__dirname, "../.."),
-  "artifacts/l1/contracts"
-);
-
-const l2ArtifactsPath = path.join(
-  path.resolve(__dirname, "../../..", "l2"),
-  "artifacts-zk/l2/contracts"
-);
-
-const AMOUNT_TO_WITHDRAW = ethers.utils.parseEther("0.000005");
+const AMOUNT_TO_DEPOSIT = utils.parseEther("0.001").toString();
+const ADDRESSES = deployedAddressesFromEnv();
 
 const provider = ethereumProvider();
-const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
-const zkProvider = new Provider(zkSyncClientURL());
-const zkWallet = new Wallet(PRIVATE_KEY, zkProvider, provider);
+const zkProvider = zkSyncProvider();
+
+// const wallet = new Wallet(PRIVATE_KEY, provider);
+const wallet = new ZkWallet(PRIVATE_KEY, zkProvider, provider);
 
 async function main() {
-  console.log("Running script to withdraw ERC20 from zkSync");
+  console.log(
+    `========== Withdrawing ${AMOUNT_TO_DEPOSIT} ${TETHER_CONSTANTS.SYMBOL} from a hyperchain with chain id = ${CHAIN_ID} ==========`
+  );
 
-  const l1SharedBridge = defaultL1Bridge(zkWallet);
-  const l2SharedBridge = defaultL2Bridge(zkWallet);
-  const l1Token = tetherTokenL1(zkWallet);
-  const l2Token = tetherTokenL2(zkWallet);
+  const l1Token = tetherTokenL1(wallet);
+  const l2Token = tetherTokenL2(wallet);
 
-  console.log("\n================== BEFORE WITHDRAW =================");
+  console.log("~~~ Pre-withdraw checks ~~~");
   console.log(
     `Account token balance on L1: ${await l1Token.balanceOf(wallet.address)}`
   );
   console.log(
-    `Bridge token balance on L1 (locked): ${await l1Token.balanceOf(
-      l1SharedBridge.address
+    `Bridge token balance on L1: ${await l1Token.balanceOf(
+      ADDRESSES.Bridges.L1SharedBridgeProxy
     )}`
   );
   console.log(
     `Account token balance on L2: ${await l2Token.balanceOf(wallet.address)}`
   );
+  console.log("~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 
-  // Withdrawal on L2
-  const withdrawResponse = await l2SharedBridge.withdraw(
-    wallet.address,
-    l2Token.address,
-    AMOUNT_TO_WITHDRAW,
-    { gasLimit: 10_000_000 }
+  console.log("~~~ Withdrawing... ~~~");
+  const withdrawTx = await wallet.withdraw({
+    token: l2Token.address,
+    amount: AMOUNT_TO_DEPOSIT,
+    bridgeAddress: ADDRESSES.Bridges.L2SharedBridgeProxy,
+  });
+
+  const withdrawReceipt = await withdrawTx.waitFinalize();
+
+  await (await wallet.finalizeWithdrawal(withdrawReceipt.hash)).wait(1);
+
+  console.log("\n~~~ Post-withdraw checks ~~~");
+  console.log(
+    `Is withdrawal finalized?`,
+    await wallet.isWithdrawalFinalized(withdrawReceipt.hash)
   );
-
-  await withdrawResponse.waitFinalize();
-
-  // Finalize Withdrawal on L1
-  const finalizeWithdrawResponse = await zkWallet.finalizeWithdrawal(
-    withdrawResponse.hash
-  );
-  await finalizeWithdrawResponse.wait();
-
-  console.log("\n================== AFTER FINALIZE WITHDRAW =================");
   console.log(
     `Account token balance on L1: ${await l1Token.balanceOf(wallet.address)}`
   );
   console.log(
     `Bridge token balance on L1 (locked): ${await l1Token.balanceOf(
-      l1SharedBridge.address
+      ADDRESSES.Bridges.L1SharedBridgeProxy
     )}`
   );
   console.log(
     `Account token balance on L2: ${await l2Token.balanceOf(wallet.address)}`
   );
+  console.log("~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 }
 
 main().catch((err) => {

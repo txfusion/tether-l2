@@ -66,9 +66,18 @@ export function deployedAddressesFromEnv(): DeployedAddresses {
 }
 
 export function applyL1ToL2Alias(address: string): string {
-  return ethers.utils.hexlify(
-    ethers.BigNumber.from(address)
-      .add(L1_TO_L2_ALIAS_OFFSET)
-      .mod(ethers.BigNumber.from(2).pow(160))
+  return ethers.getAddress(
+    `0x${
+      (BigInt(ethers.getAddress(address)) + BigInt(L1_TO_L2_ALIAS_OFFSET)) %
+      BigInt(2) ** BigInt(160)
+    }`
   );
 }
+
+// export function applyL1ToL2Alias(address: string): string {
+//   return ethers.hexlify(
+//     ethers.BigNumber.from(address)
+//       .add(L1_TO_L2_ALIAS_OFFSET)
+//       .mod(ethers.BigNumber.from(2).pow(160))
+//   );
+// }

@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "clean-install": "rm -rf node_modules l1/node_modules l2/node_modules package-lock.json l1/package-lock.json l2/package-lock.json l1/typechain l2/typechain && npm i --force && cd l1 && npm i --force && cd ../l2 && npm i --force",
     "all": "npm run compile && npm run deploy && npm run test",
     "compile": "sh ./compile.sh",
     "deploy": "sh ./deploy.sh",
@@ -14,10 +15,9 @@
   },
   "license": "ISC",
   "devDependencies": {
-    "@nomiclabs/hardhat-ethers": "^2.0.6",
+    "@nomiclabs/hardhat-ethers": "^2.2.3",
     "@nomiclabs/hardhat-etherscan": "^3.1.0",
-    "@nomiclabs/hardhat-waffle": "^2.0.3",
-    "@typechain/ethers-v5": "^7.2.0",
+    "@typechain/ethers-v6": "^0.5.1",
     "@typechain/hardhat": "^2.3.1",
     "@types/chai": "^4.3.0",
     "@types/mocha": "^9.1.1",
@@ -25,16 +25,16 @@
     "chai": "^4.3.6",
     "dotenv": "^10.0.0",
     "ethereum-waffle": "^3.4.4",
-    "ethers": "^5.6.2",
-    "hardhat": "^2.9.9",
+    "ethers": "^6.13.0",
+    "hardhat": "^2.22.5",
     "ts-node": "^10.7.0",
-    "typechain": "^5.2.0",
-    "typescript": "^4.6.3"
+    "typechain": "^8.3.2",
+    "typescript": "^4.6.3",
+    "zksync-ethers": "6.8.0"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^4.9.5",
-    "@openzeppelin/contracts-upgradeable": "^4.9.0",
     "@matterlabs/zksync-contracts": "github:matter-labs/era-contracts#994897b14eb1d8e77c809da2db3379e7b58125b5",
-    "zksync-ethers": "5.0.0"
+    "@openzeppelin/contracts": "^4.9.5",
+    "@openzeppelin/contracts-upgradeable": "^4.9.0"
   }
 }

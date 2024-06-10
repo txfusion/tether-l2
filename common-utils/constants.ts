@@ -18,7 +18,7 @@ export const SYSTEM_CONFIG_CONSTANTS = {
     "0x0000000000000000000000000000000000008006",
 };
 
-export const CREATE2_PREFIX = ethers.utils.solidityKeccak256(
+export const CREATE2_PREFIX = ethers.solidityPackedKeccak256(
   ["string"],
   ["zksyncCreate2"]
 );

@@ -1,7 +1,6 @@
 import * as dotenv from "dotenv";
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomiclabs/hardhat-ethers";
-import "@nomiclabs/hardhat-waffle";
 import "@nomicfoundation/hardhat-verify";
 
 dotenv.config({ path: `../.env` });
