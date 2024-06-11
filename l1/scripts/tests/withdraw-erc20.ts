@@ -25,8 +25,8 @@ async function main() {
     `========== Withdrawing ${AMOUNT_TO_WITHDRAW} ${TETHER_CONSTANTS.SYMBOL} from a hyperchain with chain id = ${CHAIN_ID} ==========`
   );
 
-  const l1Token = tetherTokenL1(wallet);
-  const l2Token = tetherTokenL2(wallet);
+  const l1Token = tetherTokenL1(wallet._signerL1());
+  const l2Token = tetherTokenL2(wallet._signerL2());
 
   console.log("~~~ Pre-withdraw checks ~~~");
   console.log(

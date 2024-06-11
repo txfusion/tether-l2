@@ -281,7 +281,7 @@ contract L1SharedBridge is
 
         (address _l1Token, uint256 _depositAmount, address _l2Receiver) = abi.decode(_data, (address, uint256, address));
 
-        require(BRIDGE_HUB.baseToken(_chainId) != _l1Token, "ShB: baseToken deposit not supported");
+        require(BRIDGE_HUB.baseToken(_chainId) != _l1Token, "ShB: baseToken deposit not supported"); // TODO: Confirm if the check is needed
         require(_isL1TokenSupported(_l1Token), "ShB: unsupported L1 token");
         require(msg.value == 0, "ShB m.v > 0 for BH d.it 2");
 

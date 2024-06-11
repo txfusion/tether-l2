@@ -25,8 +25,8 @@ async function main() {
     `========== Depositing ${AMOUNT_TO_DEPOSIT} ${TETHER_CONSTANTS.SYMBOL} to a hyperchain with chain id = ${CHAIN_ID} ==========`
   );
 
-  const l1Token = tetherTokenL1(wallet);
-  const l2Token = tetherTokenL2(wallet);
+  const l1Token = tetherTokenL1(wallet._signerL1());
+  const l2Token = tetherTokenL2(wallet._signerL2());
 
   console.log(
     `>>> 1) Minting ${AMOUNT_TO_DEPOSIT} L1 tokens to ${wallet.address}`
@@ -42,21 +42,26 @@ async function main() {
     )}\n`
   );
 
-  console.log(`>>> 2) Approving ${AMOUNT_TO_DEPOSIT} tokens to the bridge`);
-  await (
-    await l1Token
-      .connect(wallet)
-      .approve(ADDRESSES.Bridges.L1SharedBridgeProxy, AMOUNT_TO_DEPOSIT, {
-        gasLimit: 10_000_000,
-      })
-  ).wait(1);
-
   console.log(
-    `L1 Bridge allowance: ${await l1Token.allowance(
-      wallet.address,
-      ADDRESSES.Bridges.L1SharedBridgeProxy
-    )}`
+    `>>> Note: Approval of ${AMOUNT_TO_DEPOSIT} tokens to the bridge is done within the 'deposit' call of the SDK`
   );
+  // console.log(
+  //   `>>> 2) Approving ${AMOUNT_TO_DEPOSIT} tokens to the bridge (done within the deposit call of the SDK)`
+  // );
+  // await (
+  //   await l1Token
+  //     .connect(wallet)
+  //     .approve(ADDRESSES.Bridges.L1SharedBridgeProxy, AMOUNT_TO_DEPOSIT, {
+  //       gasLimit: 10_000_000,
+  //     })
+  // ).wait(1);
+
+  // console.log(
+  //   `L1 Bridge allowance: ${await l1Token.allowance(
+  //     wallet.address,
+  //     ADDRESSES.Bridges.L1SharedBridgeProxy
+  //   )}`
+  // );
   console.log("----- Setup complete, moving on ------\n");
 
   console.log("~~~ Pre-deposit checks ~~~");
@@ -75,26 +80,13 @@ async function main() {
 
   console.log("~~~ Depositing... ~~~");
 
-  const coder = new ethers.utils.AbiCoder();
-
   const depositTx = await wallet.deposit({
     token: l1Token.address,
     amount: AMOUNT_TO_DEPOSIT,
     bridgeAddress: ADDRESSES.Bridges.L1SharedBridgeProxy,
-    customBridgeData: coder.encode(
-      ["bytes", "bytes", "bytes"],
-      [
-        coder.encode(["string"], [TETHER_CONSTANTS.NAME]),
-        coder.encode(["string"], [TETHER_CONSTANTS.SYMBOL]),
-        coder.encode(["uint256"], [TETHER_CONSTANTS.DECIMALS]), // TODO: Either 6 decimals for the real L2 token or 18 decimals for mock L1 token
-      ]
-    ),
+    approveERC20: true,
   });
   await depositTx.waitFinalize();
-
-  // await (await zkProvider.getL2TransactionFromPriorityOp(depositTx)).wait();
-
-  // TODO: Finalize deposit
 
   console.log("\n~~~ Post-deposit checks ~~~");
   console.log(

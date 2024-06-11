@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "clean-install": "rm -rf node_modules l1/node_modules l2/node_modules package-lock.json l1/package-lock.json l2/package-lock.json l1/typechain l2/typechain && npm i --force && cd l1 && npm i --force && cd ../l2 && npm i --force && cd .. && npm run compile",
+    "clean-install": "rm -rf node_modules l1/node_modules l2/node_modules package-lock.json l1/package-lock.json l2/package-lock.json l1/typechain l2/typechain && npm i --force && npm link zksync-ethers && cd l1 && npm i --force && cd ../l2 && npm i --force && cd .. && npm run compile",
     "all": "npm run compile && npm run deploy && npm run test",
     "compile": "sh ./compile.sh",
     "deploy": "sh ./deploy.sh",
