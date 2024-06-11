@@ -2,8 +2,7 @@ import { describe } from "mocha";
 import { assert, expect } from "chai";
 
 import { setup } from "./setup/bridge.setup";
-import { CHAIN_ID, TETHER_CONSTANTS } from "../../common-utils";
-import { ethers } from "hardhat";
+import { CHAIN_ID } from "../../common-utils";
 
 describe("~~~ Bridge E2E testing", async () => {
   let ctx: Awaited<ReturnType<typeof setup>>;
@@ -134,27 +133,13 @@ describe("~~~ Bridge E2E testing", async () => {
       const userL1_TokenBalance_Before = await l1Token.balanceOf(walletAddress);
       const userL2_TokenBalance_Before = await l2Token.balanceOf(walletAddress);
 
-      const coder = new ethers.utils.AbiCoder();
       const depositTx = await deployer.deposit({
         token: l1Token.address,
         amount: depositAmount,
         bridgeAddress: ADDRESSES.Bridges.L1SharedBridgeProxy,
-        customBridgeData: coder.encode(
-          ["bytes", "bytes", "bytes"],
-          [
-            coder.encode(["string"], [TETHER_CONSTANTS.NAME]),
-            coder.encode(["string"], [TETHER_CONSTANTS.SYMBOL]),
-            coder.encode(["uint256"], [TETHER_CONSTANTS.DECIMALS]), // TODO: Either 6 decimals for the real L2 token or 18 decimals for mock L1 token
-          ]
-        ),
+        approveERC20: true,
       });
       await depositTx.waitFinalize();
-
-      // TODO: Check if needed
-      const l2Response = await zkProvider.getL2TransactionFromPriorityOp(
-        depositTx
-      );
-      await l2Response.wait();
 
       /**
        * Afters
@@ -206,7 +191,7 @@ describe("~~~ Bridge E2E testing", async () => {
       );
     });
 
-    it("> Withdraw tokens from L2 via L2ERC20Bridge", async () => {
+    it("> Withdraw tokens from L2 via L2 Shared Bridge", async () => {
       const {
         l1: { l1Token, l1Bridge },
         l2: {
@@ -299,7 +284,7 @@ describe("~~~ Bridge E2E testing", async () => {
       );
     });
 
-    it.only("> Prevents finalization of an already finalized withdrawal", async () => {
+    it("> Prevents finalization of an already finalized withdrawal", async () => {
       const {
         l2: {
           accounts: { deployer },

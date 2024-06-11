@@ -15,19 +15,21 @@ import {
 import { deployedAddressesFromEnv } from "./addresses";
 
 export function defaultL1Bridge(
-  signerOrProvider: ethers.Signer | ethers.providers.Provider
+  signerOrProvider: ethers.Signer | ethers.providers.Provider,
+  address?: string
 ): L1SharedBridge {
   return L1SharedBridge__factory.connect(
-    deployedAddressesFromEnv().Bridges.L1SharedBridgeProxy,
+    address || deployedAddressesFromEnv().Bridges.L1SharedBridgeProxy,
     signerOrProvider
   );
 }
 
 export function defaultL2Bridge(
-  signerOrProvider: ethers.Signer | ethers.providers.Provider
+  signerOrProvider: ethers.Signer | ethers.providers.Provider,
+  address?: string
 ): L2SharedBridge {
   return L2SharedBridge__factory.connect(
-    deployedAddressesFromEnv().Bridges.L2SharedBridgeProxy,
+    address || deployedAddressesFromEnv().Bridges.L2SharedBridgeProxy,
     signerOrProvider
   );
 }

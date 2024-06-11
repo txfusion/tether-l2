@@ -98,7 +98,7 @@ export class Deployer {
   async deploySharedBridgeProxyOnL2ThroughL1(
     chainId: string,
     gasPrice: ethers.BigNumberish
-  ) {
+  ): Promise<string> {
     const l1SharedBridge = defaultL1Bridge(this.deployWallet);
     if (this.verbose) {
       console.log("Deploying L2SharedBridge Proxy");
@@ -161,6 +161,8 @@ export class Deployer {
     console.log(
       `CONTRACTS_L2_SHARED_BRIDGE_PROXY_ADDR=${l2SharedBridgeProxyAddress}`
     );
+
+    return l2SharedBridgeProxyAddress;
   }
 
   private async create2DeployFromL1(
@@ -183,6 +185,7 @@ export class Deployer {
     );
 
     gasPrice ??= await bridgehub.provider.getGasPrice();
+    console.log(bridgehub);
     const expectedCost = await bridgehub.l2TransactionBaseCost(
       chainId,
       gasPrice,

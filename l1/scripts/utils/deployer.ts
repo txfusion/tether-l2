@@ -89,8 +89,8 @@ export class Deployer {
     return l1BridgeContractProxy.address;
   }
 
-  public async setParametersSharedBridgeViaOwner() {
-    const proxyAddress = this.addresses.Bridges.L1SharedBridgeProxy;
+  public async setParametersSharedBridgeViaOwner(proxy?: string) {
+    const proxyAddress = proxy || this.addresses.Bridges.L1SharedBridgeProxy;
 
     const sharedBridge = L1SharedBridge__factory.connect(
       proxyAddress,

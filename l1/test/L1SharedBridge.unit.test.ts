@@ -1,11 +1,13 @@
-import hre, { ethers } from "hardhat";
+import { ethers } from "hardhat";
 import { assert, expect } from "chai";
-import { setup } from "./setup/unit.setup";
-import { CHAIN_ID, TETHER_CONSTANTS } from "../../common-utils";
 import { Wallet } from "zksync-ethers";
 import { BigNumber } from "ethers";
 
-describe("~~~~~ l1SharedBridge ~~~~~", async () => {
+import { setup } from "./setup/unit.setup";
+
+import { CHAIN_ID } from "../../common-utils";
+
+describe("~~~~~ L1 Shared Bridge ~~~~~", async () => {
   let ctx: Awaited<ReturnType<typeof setup>>;
 
   beforeEach("Setting up the context", async () => {
@@ -13,7 +15,7 @@ describe("~~~~~ l1SharedBridge ~~~~~", async () => {
   });
 
   describe("=== Getters ===", async () => {
-    it("*** ZkSync ***", async () => {
+    it("*** Bridgehub ***", async () => {
       const { l1SharedBridge, ADDRESSES } = ctx;
       assert.equal(
         await l1SharedBridge.BRIDGE_HUB(),
@@ -29,8 +31,8 @@ describe("~~~~~ l1SharedBridge ~~~~~", async () => {
     it("*** L2 Bridge ***", async () => {
       const { l1SharedBridge, stubs } = ctx;
       assert.equal(
-        await l1SharedBridge.l2BridgeAddress(CHAIN_ID),
-        stubs.l2Erc20Bridge.address
+        (await l1SharedBridge.l2BridgeAddress(CHAIN_ID)).toUpperCase(),
+        stubs.l2SharedBridge.address.toUpperCase()
       );
     });
   });
@@ -47,17 +49,15 @@ describe("~~~~~ l1SharedBridge ~~~~~", async () => {
         l1SharedBridge,
       } = ctx;
 
-      // validate that contract is not initialized and deposits are enabled
-      assert.isTrue(await l1SharedBridge.isInitialized());
       assert.isTrue(await l1SharedBridge.isDepositsEnabled());
 
-      // grant DEPOSITS_DISABLER_ROLE role
+      // grant DEPOSITS_DISABLER_ROLE role, just in case he doesn't have it
       await l1SharedBridge.grantRole(
         await l1SharedBridge.DEPOSITS_DISABLER_ROLE(),
         deployer.address
       );
 
-      await l1SharedBridge.disableDeposits();
+      await (await l1SharedBridge.disableDeposits()).wait(1);
 
       assert.isFalse(await l1SharedBridge.isDepositsEnabled());
     });
@@ -66,15 +66,16 @@ describe("~~~~~ l1SharedBridge ~~~~~", async () => {
       const {
         accounts: { deployer, stranger: wrongL1Token },
         l1SharedBridge,
+        AMOUNT,
       } = ctx;
 
-      await deposit(
-        deployer,
-        wrongL1Token.address,
-        ethers.utils.parseUnits("1", "ether"),
-        l1SharedBridge.address,
-        "BridgeableTokensUpgradable__ErrorUnsupportedL1Token"
-      );
+      await expect(
+        deployer.deposit({
+          token: wrongL1Token.address,
+          amount: AMOUNT,
+          bridgeAddress: l1SharedBridge.address,
+        })
+      ).to.be.reverted;
     });
 
     it("Wrong (zero) deposit amount", async () => {
@@ -95,54 +96,40 @@ describe("~~~~~ l1SharedBridge ~~~~~", async () => {
     it("Insufficient token allowance for bridge", async () => {
       const {
         accounts: { deployer },
+        stubs: { l1Token },
         l1SharedBridge,
+        AMOUNT,
       } = ctx;
 
-      await deposit(
-        deployer,
-        ctx.stubs.l1Token.address,
-        ethers.utils.parseUnits("1", "ether"),
-        l1SharedBridge.address,
-        "ERC20: insufficient allowance"
-      );
+      await l1Token.approve(l1SharedBridge.address, 0);
+
+      await expect(
+        deployer.deposit({
+          token: l1Token.address,
+          amount: AMOUNT,
+          bridgeAddress: l1SharedBridge.address,
+          approveERC20: false,
+        })
+      ).to.be.revertedWith("ERC20: insufficient allowance");
     });
 
     it(">>> Works as expected", async () => {
       const {
         accounts: { deployer },
-        stubs: { l2Erc20Bridge, l1Token },
+        stubs: { l1Token },
         l1SharedBridge,
+        AMOUNT,
       } = ctx;
-      const amount = ethers.utils.parseUnits("1", "ether");
-      const l2TxGasLimit = ethers.utils.parseUnits("1000", "gwei");
-      const l2TxGasPerPubdataByte = ethers.utils.parseUnits("800", "wei");
-      const value = ethers.utils.parseUnits("250000", "gwei");
 
       const senderBalanceBefore = await l1Token.balanceOf(deployer.address);
       const bridgeBalanceBefore = await l1Token.balanceOf(
         l1SharedBridge.address
       );
 
-      // set allowance to L1 bridge
-      await l1Token
-        .connect(deployer)
-        ["approve"](l1SharedBridge.address, amount);
-
-      // validate token allowance for bridge
-      const l1TokenAllowance = await l1Token.allowance(
-        deployer.address,
-        l1SharedBridge.address
-      );
-
-      expect(
-        l1TokenAllowance.eq(amount),
-        `Value ${l1TokenAllowance.toString()} is not equal to ${amount.toString()}`
-      );
-
       await deposit(
         deployer,
         ctx.stubs.l1Token.address,
-        amount,
+        AMOUNT,
         l1SharedBridge.address
       );
 
@@ -153,17 +140,17 @@ describe("~~~~~ l1SharedBridge ~~~~~", async () => {
 
       // validate balance of the sender decreased
       expect(
-        senderL1TokenBalance.eq(senderBalanceBefore.sub(amount)),
+        senderL1TokenBalance.eq(senderBalanceBefore.sub(AMOUNT)),
         `Value ${senderL1TokenBalance.toString()} is not equal to ${senderBalanceBefore
-          .sub(amount)
+          .sub(AMOUNT)
           .toString()}`
       );
 
       // validate balance of the L1 bridge increased
       expect(
-        bridgeL1TokenBalance.eq(bridgeBalanceBefore.add(amount)),
+        bridgeL1TokenBalance.eq(bridgeBalanceBefore.add(AMOUNT)),
         `Value ${bridgeL1TokenBalance.toString()} is not equal to ${bridgeBalanceBefore
-          .add(amount)
+          .add(AMOUNT)
           .toString()}`
       );
     });
@@ -176,23 +163,10 @@ describe("~~~~~ l1SharedBridge ~~~~~", async () => {
     });
 
     it("> Disable withdrawals", async () => {
-      const {
-        accounts: { deployer },
-        l1SharedBridge,
-      } = ctx;
+      const { l1SharedBridge } = ctx;
 
-      // validate that contract is not initialized and withdrawals are enabled
-      assert.isTrue(await l1SharedBridge.isInitialized());
       assert.isTrue(await l1SharedBridge.isWithdrawalsEnabled());
-
-      // grant WITHDRAWALS_DISABLER_ROLE role
-      await l1SharedBridge.grantRole(
-        await l1SharedBridge.WITHDRAWALS_DISABLER_ROLE(),
-        deployer.address
-      );
-
-      await l1SharedBridge.disableWithdrawals();
-
+      await (await l1SharedBridge.disableWithdrawals()).wait(1);
       assert.isFalse(await l1SharedBridge.isWithdrawalsEnabled());
     });
 
@@ -252,20 +226,11 @@ const deposit = async (
   bridgeAddress: string,
   errorMsg?: string
 ) => {
-  const coder = new ethers.utils.AbiCoder();
-
   const req = {
     token: l1TokenAddress,
     amount,
     bridgeAddress,
-    customBridgeData: coder.encode(
-      ["bytes", "bytes", "bytes"],
-      [
-        coder.encode(["string"], [TETHER_CONSTANTS.NAME]),
-        coder.encode(["string"], [TETHER_CONSTANTS.SYMBOL]),
-        coder.encode(["uint256"], [TETHER_CONSTANTS.DECIMALS]), // TODO: Either 6 decimals for the real L2 token or 18 decimals for mock L1 token
-      ]
-    ),
+    approveERC20: true,
   };
 
   if (errorMsg) {

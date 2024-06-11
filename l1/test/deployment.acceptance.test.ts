@@ -1,7 +1,7 @@
 import { ethers } from "ethers";
 import { assert } from "chai";
 
-import { HASHES } from "../scripts/utils/hashes";
+import { HASHES } from "../scripts/utils/roles";
 import { setup } from "./setup/deployment.setup";
 import {
   CHAIN_ID,

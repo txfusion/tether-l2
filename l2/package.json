@@ -9,7 +9,7 @@
     "upgrade-usdt-token": "hardhat run ./scripts/upgrade-usdt-token.ts",
     "test": "hardhat test ./test/*.test.ts",
     "test:unit": "hardhat test ./test/*.unit.test.ts",
-    "test:unit:bridge": "hardhat test ./test/L2ERC20Bridge.unit.test.ts",
+    "test:unit:bridge": "hardhat test ./test/L2SharedBridge.unit.test.ts",
     "test:unit:erc20Bridged": "hardhat test ./test/ERC20Bridged.unit.test.ts"
   },
   "license": "ISC",

@@ -7,7 +7,6 @@ pragma solidity 0.8.24;
 
 /// @notice Proxy
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "../../common/proxy/OssifiableProxy.sol";
 
 /// @notice Stubs
 import "../../common/stubs/EmptyContractStub.sol";

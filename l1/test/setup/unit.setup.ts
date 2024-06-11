@@ -12,9 +12,12 @@ import {
 import {
   ERC20BridgedStub__factory,
   EmptyContractStub__factory,
+  L1SharedBridge__factory,
+  TransparentUpgradeableProxy__factory,
 } from "../../typechain";
-import { Deployer } from "../../scripts/utils/deployer";
 import { L2SharedBridgeStub__factory } from "../../../l2/typechain";
+import { constants } from "ethers";
+import { HASHES, grantRole } from "../../scripts/utils/roles";
 
 export async function setup() {
   const ADDRESSES = deployedAddressesFromEnv();
@@ -27,29 +30,98 @@ export async function setup() {
     ethereumProvider()
   );
 
-  const l1TokenStub = await new ERC20BridgedStub__factory(
-    deployer._signerL1()
-  ).deploy(TETHER_CONSTANTS.NAME, TETHER_CONSTANTS.SYMBOL);
-  const l2TokenStub = await new EmptyContractStub__factory(
-    deployer._signerL1()
-  ).deploy();
+  // ********** Stubs **********
+  let i = 0;
+  // console.log(++i);
+  // - L1 Token
+  const l1TokenStub = await (
+    await new ERC20BridgedStub__factory(deployer._signerL1()).deploy(
+      TETHER_CONSTANTS.NAME,
+      TETHER_CONSTANTS.SYMBOL
+    )
+  ).deployed();
 
-  const contractDeployer = new Deployer({
-    deployWallet: deployer,
-    verbose: true,
-  });
+  // - L2 Token
+  // console.log(++i);
+  const l2TokenStub = await (
+    await new EmptyContractStub__factory(deployer._signerL1()).deploy()
+  ).deployed();
 
-  console.log("before deploy (error on deploy impl)");
+  // - L2 Bridge
+  // console.log(++i);
+  const l2Bridge = await (
+    await new L2SharedBridgeStub__factory(deployer._signerL1()).deploy(CHAIN_ID)
+  ).deployed();
 
-  const sharedBridgeImplementationAddress =
-    await contractDeployer.deploySharedBridgeImplementation();
+  // L1 Bridge
+  // console.log(++i);
+  const l1SharedBridgeImpl = await (
+    await new L1SharedBridge__factory(deployer._signerL1()).deploy(
+      constants.AddressZero,
+      (
+        await deployer.getBridgehubContract()
+      ).address,
+      CHAIN_ID,
+      deployedAddressesFromEnv().StateTransition.DiamondProxy
+    )
+  ).deployed();
 
-  await contractDeployer.deploySharedBridgeProxy(
-    sharedBridgeImplementationAddress,
-    l1TokenStub.address
+  // console.log(++i);
+  const l1SharedBridgeProxy = await (
+    await new TransparentUpgradeableProxy__factory(deployer._signerL1()).deploy(
+      l1SharedBridgeImpl.address,
+      l2TokenStub.address, // won't be used
+      L1SharedBridge__factory.createInterface().encodeFunctionData(
+        "initialize",
+        [deployer._signerL1().address, l1TokenStub.address]
+      )
+    )
+  ).deployed();
+
+  // console.log(++i);
+
+  const AMOUNT = ethers.utils.parseUnits("1", "ether");
+
+  if ((await l1TokenStub.balanceOf(deployer.address)).lt(AMOUNT)) {
+    await l1TokenStub.bridgeMint(deployer.address, AMOUNT);
+  }
+
+  const l1SharedBridge = defaultL1Bridge(
+    deployer._signerL1(),
+    l1SharedBridgeProxy.address
   );
 
-  await contractDeployer.setParametersSharedBridgeViaOwner();
+  await grantRole(
+    l1SharedBridge,
+    HASHES.ROLES.DEPOSITS_ENABLER_ROLE,
+    "DEPOSITS_ENABLER_ROLE",
+    [deployer.address]
+  );
+
+  await grantRole(
+    l1SharedBridge,
+    HASHES.ROLES.DEPOSITS_DISABLER_ROLE,
+    "DEPOSITS_DISABLER_ROLE",
+    [deployer.address]
+  );
+
+  await grantRole(
+    l1SharedBridge,
+    HASHES.ROLES.WITHDRAWALS_ENABLER_ROLE,
+    "WITHDRAWALS_ENABLER_ROLE",
+    [deployer.address]
+  );
+
+  await grantRole(
+    l1SharedBridge,
+    HASHES.ROLES.WITHDRAWALS_DISABLER_ROLE,
+    "WITHDRAWALS_DISABLER_ROLE",
+    [deployer.address]
+  );
+
+  await (
+    await l1SharedBridge.initializeChainGovernance(CHAIN_ID, l2Bridge.address)
+  ).wait();
 
   return {
     accounts: {
@@ -59,12 +131,13 @@ export async function setup() {
     stubs: {
       l1Token: l1TokenStub,
       l2Token: l2TokenStub,
-      l2Erc20Bridge: L2SharedBridgeStub__factory.connect(
-        await defaultL1Bridge(deployer).l2BridgeAddress(CHAIN_ID),
-        deployer
-      ),
+      l2SharedBridge: l2Bridge,
     },
-    l1SharedBridge: defaultL1Bridge(deployer),
+    l1SharedBridge: defaultL1Bridge(
+      deployer._signerL1(),
+      l1SharedBridgeProxy.address
+    ),
     ADDRESSES,
+    AMOUNT,
   };
 }
