@@ -11,7 +11,7 @@ import {IL2SharedBridge} from
 ///     Additionally, adds the methods for bridging management: enabling and disabling withdrawals/deposits
 contract L2SharedBridgeStub is IL2SharedBridge {
     /// @dev The address of the L1 bridge counterpart.
-    address public override l1Bridge;
+    address public override l1SharedBridge;
     address public l1Token;
     address public l2Token;
     address public admin;
@@ -26,15 +26,15 @@ contract L2SharedBridgeStub is IL2SharedBridge {
     }
 
     /// @notice Initializes the bridge contract for later use. Expected to be used in the proxy.
-    /// @param _l1Bridge The address of the L1 Bridge contract.
+    /// @param _l1SharedBridge The address of the L1 Bridge contract.
     /// @param _l1Token The address of the L1 token.
     /// @param _l2Token The address of the L1 token.
     /// @param _aliasedOwner The address of the governor contract.
-    function initialize(address _l1Bridge, address _l1Token, address _l2Token, address _aliasedOwner) external {
+    function initialize(address _l1SharedBridge, address _l1Token, address _l2Token, address _aliasedOwner) external {
         require(_l1Token != address(0), "L1 token address cannot be zero");
         require(_l2Token != address(0), "L2 token address cannot be zero");
 
-        l1Bridge = _l1Bridge;
+        l1SharedBridge = _l1SharedBridge;
         l1Token = _l1Token;
         l2Token = _l2Token;
         admin = _aliasedOwner;
@@ -62,6 +62,10 @@ contract L2SharedBridgeStub is IL2SharedBridge {
 
     function setL2Token(address l2Token_) external {
         l2Token = l2Token_;
+    }
+
+    function l1Bridge() public view override returns (address) {
+        return address(0);
     }
 
     /// @return Address of an L1 token counterpart

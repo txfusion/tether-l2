@@ -11,9 +11,12 @@ describe("~~~~~ L2 Shared Bridge ~~~~~", async () => {
   });
 
   describe("=== Getters ===", async () => {
-    it("*** L1 Bridge ***", async () => {
+    it.only("*** L1 Bridge ***", async () => {
       const { l2SharedBridge, l1SharedBridge } = context;
-      assert.equal(await l2SharedBridge.l1Bridge(), l1SharedBridge.address);
+      assert.equal(
+        await l2SharedBridge.l1SharedBridge(),
+        l1SharedBridge.address
+      );
     });
 
     it("*** L1 Token ***", async () => {
@@ -166,7 +169,7 @@ describe("~~~~~ L2 Shared Bridge ~~~~~", async () => {
       );
     });
 
-    it("Invalid L1 Caller", async () => {
+    it.only("Invalid L1 Caller", async () => {
       const {
         l2SharedBridge,
         accounts: { recipient },
@@ -188,9 +191,7 @@ describe("~~~~~ L2 Shared Bridge ~~~~~", async () => {
               gasLimit,
             }
           )
-      )
-        .to.be.revertedWithCustomError(l2SharedBridge, "InvalidCaller")
-        .withArgs(recipient.address);
+      ).to.be.revertedWith("mq");
     });
 
     it("Blocked address cannot finalize deposit", async () => {

@@ -14,16 +14,6 @@ import {IL2SharedBridge} from
 import {AddressAliasHelper} from "@matterlabs/zksync-contracts/l2-contracts/contracts/vendor/AddressAliasHelper.sol";
 import {L2ContractHelper} from "@matterlabs/zksync-contracts/l2-contracts/contracts/L2ContractHelper.sol";
 
-// TODO: Perhaps integrate these errors instead of custom ones
-import {
-    EmptyAddress,
-    EmptyBytes32,
-    InvalidCaller,
-    AddressMismatch,
-    AmountMustBeGreaterThanZero,
-    DeployFailed
-} from "@matterlabs/zksync-contracts/l2-contracts/contracts/L2ContractErrors.sol";
-
 import {BridgingManagerUpgradeable} from "../../common/BridgingManagerUpgradeable.sol";
 import {BridgeableTokensUpgradable} from "../../common/BridgeableTokensUpgradable.sol";
 import {TetherZkSync} from "./token/TetherZkSync.sol";
@@ -38,8 +28,8 @@ contract L2SharedBridge is
     BridgeableTokensUpgradable,
     OwnableUpgradeable
 {
-    /// @dev The address of the L1 bridge counterpart.
-    address public override l1Bridge;
+    /// @dev The address of the L1 shared bridge counterpart.
+    address public override l1SharedBridge;
 
     uint256 internal immutable ERA_CHAIN_ID;
 
@@ -51,19 +41,19 @@ contract L2SharedBridge is
     }
 
     /// @notice Initializes the bridge contract for later use. Expected to be used in the proxy.
-    /// @param _l1Bridge The address of the L1 Bridge contract.
+    /// @param _l1SharedBridge The address of the L1 Bridge contract.
     /// @param _l1Token The address of the L1 token.
     /// @param _l2Token The address of the L1 token.
     /// @param _aliasedOwner The address of the governor contract.
-    function initialize(address _l1Bridge, address _l1Token, address _l2Token, address _aliasedOwner)
+    function initialize(address _l1SharedBridge, address _l1Token, address _l2Token, address _aliasedOwner)
         external
         initializer
-        onlyNonZeroAddress(_l1Bridge)
+        onlyNonZeroAddress(_l1SharedBridge)
         onlyNonZeroAddress(_l1Token)
         onlyNonZeroAddress(_l2Token)
         onlyNonZeroAddress(_aliasedOwner)
     {
-        l1Bridge = _l1Bridge;
+        l1SharedBridge = _l1SharedBridge;
 
         __BridgingManagerUpgradeable_init(_aliasedOwner);
 
@@ -87,9 +77,7 @@ contract L2SharedBridge is
         onlySupportedL1Token(_l1Token)
     {
         // Only the L1 bridge counterpart can initiate and finalize the deposit.
-        if (AddressAliasHelper.undoL1ToL2Alias(msg.sender) != l1Bridge) {
-            revert InvalidCaller(msg.sender);
-        }
+        require(AddressAliasHelper.undoL1ToL2Alias(msg.sender) == l1SharedBridge, "mq");
 
         address _l2Token = l2Token();
 
@@ -107,9 +95,7 @@ contract L2SharedBridge is
         override
         onlySupportedL2Token(_l2Token)
     {
-        if (_amount == 0) {
-            revert AmountMustBeGreaterThanZero();
-        }
+        require(_amount > 0, "Amount cannot be zero");
 
         TetherZkSync(_l2Token).bridgeBurn(msg.sender, _amount);
 
@@ -126,6 +112,11 @@ contract L2SharedBridge is
     /// @return Address of an L1 token counterpart
     function l1TokenAddress(address) public view override returns (address) {
         return l1Token();
+    }
+
+    /// @return Address of an L1 token counterpart
+    function l1Bridge() public view override returns (address) {
+        return address(0);
     }
 
     /// @return Address of an L2 token counterpart
