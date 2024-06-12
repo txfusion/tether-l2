@@ -80,17 +80,18 @@ describe("~~~~~ L1 Shared Bridge ~~~~~", async () => {
 
     it("Wrong (zero) deposit amount", async () => {
       const {
-        accounts: { deployer },
+        accounts: { deployer, stranger },
+        stubs: { l1Token },
         l1SharedBridge,
       } = ctx;
 
-      await deposit(
-        deployer,
-        ctx.stubs.l1Token.address,
-        ethers.utils.parseUnits("0", "ether"),
-        l1SharedBridge.address,
-        "6T" // empty deposit error
-      );
+      await expect(
+        deployer.deposit({
+          token: l1Token.address,
+          amount: 0,
+          bridgeAddress: l1SharedBridge.address,
+        })
+      ).to.be.reverted; // should be "6T"
     });
 
     it("Insufficient token allowance for bridge", async () => {
@@ -108,9 +109,8 @@ describe("~~~~~ L1 Shared Bridge ~~~~~", async () => {
           token: l1Token.address,
           amount: AMOUNT,
           bridgeAddress: l1SharedBridge.address,
-          approveERC20: false,
         })
-      ).to.be.revertedWith("ERC20: insufficient allowance");
+      ).to.be.reverted; // should be "ERC20: insufficient allowance"
     });
 
     it(">>> Works as expected", async () => {

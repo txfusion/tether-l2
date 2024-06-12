@@ -3,13 +3,14 @@ import { describe } from "mocha";
 import { BigNumber, ethers } from "ethers";
 import { Wallet } from "zksync-ethers";
 import { setup } from "./setup/erc20.setup";
-import { domainSeparator } from "./utils/eip712/domainSeparator";
 import {
   EIP712Operations,
   getEIP712Operation,
   signTypedData,
+  domainSeparator,
 } from "./utils/eip712";
 import { TetherZkSync } from "../typechain";
+import { TETHER_CONSTANTS } from "../../common-utils";
 
 describe("~~~~~ ERC20Bridged ~~~~~", async () => {
   let context: Awaited<ReturnType<typeof setup>>;
@@ -21,38 +22,29 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
   describe("=== Getters ===", async () => {
     it("*** Bridge ***", async () => {
       const {
-        accounts: { admin },
+        accounts: { bridge },
         erc20Bridged,
       } = context;
 
-      assert.equal(await erc20Bridged.bridge(), admin.address);
+      assert.equal(await erc20Bridged.bridge(), bridge.address);
     });
 
     it("*** Name ***", async () => {
-      const {
-        erc20Bridged,
-        erc20Metadata: { name },
-      } = context;
+      const { erc20Bridged } = context;
 
-      assert.equal(await erc20Bridged.name(), name);
+      assert.equal(await erc20Bridged.name(), TETHER_CONSTANTS.NAME);
     });
 
     it("*** Symbol ***", async () => {
-      const {
-        erc20Bridged,
-        erc20Metadata: { symbol },
-      } = context;
+      const { erc20Bridged } = context;
 
-      assert.equal(await erc20Bridged.symbol(), symbol);
+      assert.equal(await erc20Bridged.symbol(), TETHER_CONSTANTS.SYMBOL);
     });
 
     it("*** Decimals ***", async () => {
-      const {
-        erc20Bridged,
-        erc20Metadata: { decimals },
-      } = context;
+      const { erc20Bridged } = context;
 
-      assert.equal(await erc20Bridged.decimals(), decimals);
+      assert.equal(await erc20Bridged.decimals(), TETHER_CONSTANTS.DECIMALS);
     });
 
     it("*** Nonces ***", async () => {
@@ -105,69 +97,73 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
 
     it(">>> works as expected (add to blocked list)", async () => {
       const {
-        accounts: { initialHolder, admin },
+        accounts: { initialHolder, bridge },
         erc20Bridged,
       } = context;
 
-      await addToBlockedList(erc20Bridged, admin, initialHolder);
+      await addToBlockedList(erc20Bridged, bridge, initialHolder);
     });
 
     it(">>> works as expected (remove from blocked list)", async () => {
       const {
-        accounts: { initialHolder, admin },
+        accounts: { initialHolder, bridge },
         erc20Bridged,
       } = context;
 
-      await addToBlockedList(erc20Bridged, admin, initialHolder);
-      await removeFromBlockedList(erc20Bridged, admin, initialHolder);
+      await addToBlockedList(erc20Bridged, bridge, initialHolder);
+      await removeFromBlockedList(erc20Bridged, bridge, initialHolder);
     });
 
     describe("*** Destroy blocked funds ***", async () => {
       it("should revert if non-admin is trying to destroy blocked funds", async () => {
         const {
-          accounts: { initialHolder, admin },
+          accounts: { initialHolder, bridge },
           erc20Bridged,
         } = context;
 
         await expect(
-          erc20Bridged.connect(initialHolder).destroyBlockedFunds(admin.address)
+          erc20Bridged
+            .connect(initialHolder)
+            .destroyBlockedFunds(bridge.address)
         ).to.be.revertedWith(`Ownable: caller is not the owner`);
       });
 
-      it("should revert if admins is trying to destroy non-blocked account's funds", async () => {
+      it("should revert if bridges is trying to destroy non-blocked account's funds", async () => {
         const {
-          accounts: { initialHolder, admin },
+          accounts: { initialHolder, bridge },
           erc20Bridged,
         } = context;
         await expect(
-          erc20Bridged.connect(admin).destroyBlockedFunds(initialHolder.address)
+          erc20Bridged
+            .connect(bridge)
+            .destroyBlockedFunds(initialHolder.address)
         ).to.be.revertedWith("TetherToken: user is not blocked");
       });
 
       it(">>> works as expected", async () => {
         const {
-          accounts: { initialHolder, admin },
+          accounts: { initialHolder, bridge },
           erc20Bridged,
         } = context;
 
-        await blockAndDestroyBlockedFunds(erc20Bridged, admin, initialHolder);
+        await blockAndDestroyBlockedFunds(erc20Bridged, bridge, initialHolder);
       });
     });
 
     describe("*** Transfer ***", async () => {
       it("should revert if a blocked account is trying to use transfer()", async () => {
         const {
-          accounts: { initialHolder, admin },
+          accounts: { initialHolder, bridge },
           erc20Bridged,
           DEFAULT_AMOUNT,
         } = context;
 
-        await addToBlockedList(erc20Bridged, admin, initialHolder);
+        await addToBlockedList(erc20Bridged, bridge, initialHolder);
 
         await expect(
           erc20Bridged
             .connect(initialHolder)
-            .transfer(admin.address, DEFAULT_AMOUNT)
+            .transfer(bridge.address, DEFAULT_AMOUNT)
         ).to.be.revertedWith("TetherToken: from is blocked");
       });
 
@@ -187,19 +183,19 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
 
       it(">>> works as expected (non-blocked account can use transfer())", async () => {
         const {
-          accounts: { initialHolder, admin },
+          accounts: { initialHolder, bridge },
           erc20Bridged,
           DEFAULT_AMOUNT,
         } = context;
 
-        await removeFromBlockedList(erc20Bridged, admin, initialHolder);
+        await removeFromBlockedList(erc20Bridged, bridge, initialHolder);
 
         const transferTx = await erc20Bridged
           .connect(initialHolder)
-          .transfer(admin.address, DEFAULT_AMOUNT);
+          .transfer(bridge.address, DEFAULT_AMOUNT);
         await transferTx.wait();
 
-        expect(await erc20Bridged.balanceOf(admin.address)).to.be.equal(
+        expect(await erc20Bridged.balanceOf(bridge.address)).to.be.equal(
           DEFAULT_AMOUNT
         );
       });
@@ -208,23 +204,23 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
     describe("*** Transfer From ***", async () => {
       it("should revert if blocked account is trying to use transferFrom()", async () => {
         const {
-          accounts: { initialHolder, admin, spender },
+          accounts: { initialHolder, bridge, spender },
           erc20Bridged,
           DEFAULT_AMOUNT,
         } = context;
 
-        await addToBlockedList(erc20Bridged, admin, initialHolder);
+        await addToBlockedList(erc20Bridged, bridge, initialHolder);
 
         await expect(
           erc20Bridged
             .connect(initialHolder)
-            .transferFrom(initialHolder.address, admin.address, DEFAULT_AMOUNT)
+            .transferFrom(initialHolder.address, bridge.address, DEFAULT_AMOUNT)
         ).to.be.revertedWith("Blocked: msg.sender is blocked");
       });
 
       it("should revert if someone is trying to use transferFrom() from the blocked account", async () => {
         const {
-          accounts: { initialHolder, admin, spender },
+          accounts: { initialHolder, bridge, spender },
           erc20Bridged,
           DEFAULT_AMOUNT,
         } = context;
@@ -235,12 +231,12 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
             .approve(spender.address, DEFAULT_AMOUNT)
         ).wait();
 
-        await addToBlockedList(erc20Bridged, admin, initialHolder);
+        await addToBlockedList(erc20Bridged, bridge, initialHolder);
 
         await expect(
           erc20Bridged
             .connect(spender)
-            .transferFrom(initialHolder.address, admin.address, DEFAULT_AMOUNT)
+            .transferFrom(initialHolder.address, bridge.address, DEFAULT_AMOUNT)
         ).to.be.revertedWith("TetherToken: from is blocked");
       });
 
@@ -270,7 +266,7 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
 
       it(">>> works as expected (non-blocked account can use transferFrom())", async () => {
         const {
-          accounts: { initialHolder, admin, spender },
+          accounts: { initialHolder, bridge, spender },
           erc20Bridged,
           DEFAULT_AMOUNT,
         } = context;
@@ -281,15 +277,15 @@ describe("~~~~~ ERC20Bridged ~~~~~", async () => {
             .approve(spender.address, DEFAULT_AMOUNT)
         ).wait();
 
-        await removeFromBlockedList(erc20Bridged, admin, initialHolder);
+        await removeFromBlockedList(erc20Bridged, bridge, initialHolder);
 
         await (
           await erc20Bridged
             .connect(spender)
-            .transferFrom(initialHolder.address, admin.address, DEFAULT_AMOUNT)
+            .transferFrom(initialHolder.address, bridge.address, DEFAULT_AMOUNT)
         ).wait();
 
-        expect(await erc20Bridged.balanceOf(admin.address)).to.be.equal(
+        expect(await erc20Bridged.balanceOf(bridge.address)).to.be.equal(
           DEFAULT_AMOUNT
         );
       });

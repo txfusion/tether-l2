@@ -10,12 +10,13 @@ import {
   CHAIN_ID,
   TETHER_CONSTANTS,
   defaultL2Bridge,
+  ethereumProvider,
   zkSyncProvider,
 } from "../../../common-utils";
 
 export async function setup() {
   const zkProvider = zkSyncProvider();
-  const ethProvider = zkSyncProvider();
+  const ethProvider = ethereumProvider();
 
   const deployerWallet = new Wallet(
     richWallets[0].privateKey,

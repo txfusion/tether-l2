@@ -6,6 +6,7 @@ export const TETHER_CONSTANTS = {
   SYMBOL: "USDT",
   DECIMALS: 6,
   L2_CONTRACT_NAME: "TetherZkSync",
+  VERSION: "1",
 };
 /// **********************************************
 
