@@ -183,7 +183,7 @@ describe("~~~ Tether on zkSync Era :: deployment acceptance test ~~~", async () 
       } = ctx;
 
       assert.equal(
-        await l2Bridge.l1Bridge(),
+        await l2Bridge.l1SharedBridge(),
         ADDRESSES.Bridges.L1SharedBridgeProxy
       );
     });
