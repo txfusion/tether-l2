@@ -37,6 +37,7 @@
     "@matterlabs/zksync-contracts": "github:matter-labs/era-contracts#32ca4e665da89f5b4f2f705eee40d91024ad5b48",
     "@openzeppelin/contracts": "^4.9.5",
     "@openzeppelin/contracts-upgradeable": "^4.9.0",
+    "era-contracts": "github:matter-labs/era-contracts#32ca4e665da89f5b4f2f705eee40d91024ad5b48",
     "zksync-ethers": "5.8.0"
   }
 }

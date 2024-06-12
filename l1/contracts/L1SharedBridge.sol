@@ -492,151 +492,38 @@ contract L1SharedBridge is
     /* 
     * NOTE: For Tether, there will not be a legacy bridge, as old USDT bridge and its tokens (and their L2 counterparts) 
     * will be treated as "bridged" USDT and the new ones (which will use this bridge) will be treated as "native ZKsync" USDT.
-    * Functions related to the legacy bridge will be kept for SDK compatibility, but they will only have a hardcoded chain id,
-    * other than that, the regular functions should be used (for both Era and other hyperchains).
+    * Functions related to the legacy bridge will be kept for SDK compatibility.
     */
 
-    /// @notice Initiates a deposit by locking funds on the contract and sending the request
-    /// of processing an L2 transaction where tokens would be minted.
-    /// @dev If the token is bridged for the first time, the L2 token contract will be deployed. Note however, that the
-    /// newly-deployed token does not support any custom logic, i.e. rebase tokens' functionality is not supported.
-    /// @param _l2Receiver The account address that should receive funds on L2
-    /// @param _l1Token The L1 token address which is deposited
-    /// @param _amount The total amount of tokens to be bridged
-    /// @param _l2TxGasLimit The L2 gas limit to be used in the corresponding L2 transaction
-    /// @param _l2TxGasPerPubdataByte The gasPerPubdataByteLimit to be used in the corresponding L2 transaction
-    /// @param _refundRecipient The address on L2 that will receive the refund for the transaction.
-    /// @dev If the L2 deposit finalization transaction fails, the `_refundRecipient` will receive the `_l2Value`.
-    /// Please note, the contract may change the refund recipient's address to eliminate sending funds to addresses
-    /// out of control.
-    /// - If `_refundRecipient` is a contract on L1, the refund will be sent to the aliased `_refundRecipient`.
-    /// - If `_refundRecipient` is set to `address(0)` and the sender has NO deployed bytecode on L1, the refund will
-    /// be sent to the `msg.sender` address.
-    /// - If `_refundRecipient` is set to `address(0)` and the sender has deployed bytecode on L1, the refund will be
-    /// sent to the aliased `msg.sender` address.
-    /// @dev The address aliasing of L1 contracts as refund recipient on L2 is necessary to guarantee that the funds
-    /// are controllable through the Mailbox, since the Mailbox applies address aliasing to the from address for the
-    /// L2 tx if the L1 msg.sender is a contract. Without address aliasing for L1 contracts as refund recipients they
-    /// would not be able to make proper L2 tx requests through the Mailbox to use or withdraw the funds from L2, and
-    /// the funds would be lost.
-    /// @return l2TxHash The L2 transaction hash of deposit finalization.
-    function depositLegacyErc20Bridge(
-        address _prevMsgSender,
-        address _l2Receiver,
-        address _l1Token,
-        uint256 _amount,
-        uint256 _l2TxGasLimit,
-        uint256 _l2TxGasPerPubdataByte,
-        address _refundRecipient
-    ) external payable override nonReentrant onlySupportedL1Token(_l1Token) whenNotPaused returns (bytes32 l2TxHash) {
-        require(l2BridgeAddress[ERA_CHAIN_ID] != address(0), "ShB b. n dep");
-
-        // Note that funds have been transferred to this contract in the legacy ERC20 bridge.
-        if (!hyperbridgingEnabled[ERA_CHAIN_ID]) {
-            chainBalance[ERA_CHAIN_ID][_l1Token] += _amount;
-        }
-
-        bytes memory l2TxCalldata = _getDepositL2Calldata(_prevMsgSender, _l2Receiver, _l1Token, _amount);
-
-        {
-            // If the refund recipient is not specified, the refund will be sent to the sender of the transaction.
-            // Otherwise, the refund will be sent to the specified address.
-            // If the recipient is a contract on L1, the address alias will be applied.
-            address refundRecipient = AddressAliasHelper.actualRefundRecipient(_refundRecipient, _prevMsgSender);
-
-            L2TransactionRequestDirect memory request = L2TransactionRequestDirect({
-                chainId: ERA_CHAIN_ID,
-                l2Contract: l2BridgeAddress[ERA_CHAIN_ID],
-                mintValue: msg.value, // l2 gas + l2 msg.Value the bridgehub will withdraw the mintValue from the base token bridge for gas
-                l2Value: 0, // L2 msg.value, this contract doesn't support base token deposits or wrapping functionality, for direct deposits use bridgehub
-                l2Calldata: l2TxCalldata,
-                l2GasLimit: _l2TxGasLimit,
-                l2GasPerPubdataByteLimit: _l2TxGasPerPubdataByte,
-                factoryDeps: new bytes[](0),
-                refundRecipient: refundRecipient
-            });
-            l2TxHash = BRIDGE_HUB.requestL2TransactionDirect{value: msg.value}(request);
-        }
-
-        bytes32 txDataHash = keccak256(abi.encode(_prevMsgSender, _l1Token, _amount));
-        // Save the deposited amount to claim funds on L1 if the deposit failed on L2
-        depositHappened[ERA_CHAIN_ID][l2TxHash] = txDataHash;
-
-        emit LegacyDepositInitiated({
-            chainId: ERA_CHAIN_ID,
-            l2DepositTxHash: l2TxHash,
-            from: _prevMsgSender,
-            to: _l2Receiver,
-            l1Token: _l1Token,
-            amount: _amount
-        });
+    function depositLegacyErc20Bridge(address, address, address, uint256, uint256, uint256, address)
+        external
+        payable
+        override
+        nonReentrant
+        returns (bytes32 l2TxHash)
+    {
+        l2TxHash = bytes32(0);
     }
 
-    /// @notice Finalizes the withdrawal for transactions initiated via the legacy ERC20 bridge.
-    /// @param _l2BatchNumber The L2 batch number where the withdrawal was processed
-    /// @param _l2MessageIndex The position in the L2 logs Merkle tree of the l2Log that was sent with the message
-    /// @param _l2TxNumberInBatch The L2 transaction number in the batch, in which the log was sent
-    /// @param _message The L2 withdraw data, stored in an L2 -> L1 message
-    /// @param _merkleProof The Merkle proof of the inclusion L2 -> L1 message about withdrawal initialization
-    ///
-    /// @return l1Receiver The address on L1 that will receive the withdrawn funds
-    /// @return l1Token The address of the L1 token being withdrawn
-    /// @return amount The amount of the token being withdrawn
-    function finalizeWithdrawalLegacyErc20Bridge(
-        uint256 _l2BatchNumber,
-        uint256 _l2MessageIndex,
-        uint16 _l2TxNumberInBatch,
-        bytes calldata _message,
-        bytes32[] calldata _merkleProof
-    ) external override returns (address l1Receiver, address l1Token, uint256 amount) {
-        (l1Receiver, l1Token, amount) = _finalizeWithdrawal({
-            _chainId: ERA_CHAIN_ID,
-            _l2BatchNumber: _l2BatchNumber,
-            _l2MessageIndex: _l2MessageIndex,
-            _l2TxNumberInBatch: _l2TxNumberInBatch,
-            _message: _message,
-            _merkleProof: _merkleProof
-        });
+    function finalizeWithdrawalLegacyErc20Bridge(uint256, uint256, uint16, bytes calldata, bytes32[] calldata)
+        external
+        pure
+        override
+        returns (address l1Receiver, address l1Token, uint256 amount)
+    {
+        (l1Receiver, l1Token, amount) = (address(0), address(0), 0);
     }
 
-    /// @notice Withdraw funds from the initiated deposit, that failed when finalizing on zkSync Era chain.
-    /// This function is specifically designed for maintaining backward-compatibility with legacy `claimFailedDeposit`
-    /// method in `L1ERC20Bridge`.
-    ///
-    /// @param _depositSender The address of the deposit initiator
-    /// @param _l1Token The address of the deposited L1 ERC20 token
-    /// @param _amount The amount of the deposit that failed.
-    /// @param _l2TxHash The L2 transaction hash of the failed deposit finalization
-    /// @param _l2BatchNumber The L2 batch number where the deposit finalization was processed
-    /// @param _l2MessageIndex The position in the L2 logs Merkle tree of the l2Log that was sent with the message
-    /// @param _l2TxNumberInBatch The L2 transaction number in a batch, in which the log was sent
-    /// @param _merkleProof The Merkle proof of the processing L1 -> L2 transaction with deposit finalization
     function claimFailedDepositLegacyErc20Bridge(
-        address _depositSender,
-        address _l1Token,
-        uint256 _amount,
-        bytes32 _l2TxHash,
-        uint256 _l2BatchNumber,
-        uint256 _l2MessageIndex,
-        uint16 _l2TxNumberInBatch,
-        bytes32[] calldata _merkleProof
-    ) external override {
-        _claimFailedDeposit({
-            _chainId: ERA_CHAIN_ID,
-            _depositSender: _depositSender,
-            _l1Token: _l1Token,
-            _amount: _amount,
-            _l2TxHash: _l2TxHash,
-            _l2BatchNumber: _l2BatchNumber,
-            _l2MessageIndex: _l2MessageIndex,
-            _l2TxNumberInBatch: _l2TxNumberInBatch,
-            _merkleProof: _merkleProof
-        });
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                      Left for SDK compatibility
-    //////////////////////////////////////////////////////////////*/
+        address,
+        address,
+        uint256,
+        bytes32,
+        uint256,
+        uint256,
+        uint16,
+        bytes32[] calldata
+    ) external pure override {}
 
     function L1_WETH_TOKEN() external pure override returns (address) {
         return address(0);
