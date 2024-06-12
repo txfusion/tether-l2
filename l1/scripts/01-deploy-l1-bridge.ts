@@ -47,12 +47,6 @@ async function main() {
     sharedBridgeImplementationAddress,
     l1ERC20TokenAddress
   );
-
-  /**
-   * 3. Set shared bridge's legacy parameters -> Note: probably not needed, will investigate
-   */
-  await deployer.setParametersSharedBridgeViaOwner();
-  // await deployer.setParametersSharedBridgeViaGovernance();
 }
 
 main().catch((error) => {
