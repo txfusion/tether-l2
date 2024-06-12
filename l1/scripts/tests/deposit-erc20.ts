@@ -1,5 +1,5 @@
 import { Wallet as ZkWallet } from "zksync-ethers";
-import { ethers, utils } from "ethers";
+import { ethers } from "ethers";
 import {
   CHAIN_ID,
   PRIVATE_KEY,
@@ -11,7 +11,7 @@ import {
   deployedAddressesFromEnv,
 } from "../../../common-utils";
 
-const AMOUNT_TO_DEPOSIT = utils.parseEther("0.001").toString();
+const AMOUNT_TO_DEPOSIT = ethers.utils.parseEther("0.001").toString();
 const ADDRESSES = deployedAddressesFromEnv();
 
 const provider = ethereumProvider();

@@ -8,7 +8,7 @@
     "all": "npm run compile && npm run deploy && npm run test",
     "compile": "sh ./compile.sh",
     "deploy": "sh ./deploy.sh",
-    "test": "cd l1 && npm run test:unit && npm run test:deployment-acceptance && npm run test:e2e && cd ../l2 && npm run test:unit",
+    "test": "cd l1 && npm run test && cd ../l2 && npm run test",
     "test:e2e": "cd l1 && npm run test:e2e",
     "test:deployment-acceptance": "cd l1 && npm run test:deployment-acceptance",
     "test:unit": "cd l1 && npm run test:unit && cd ../l2 && npm run test:unit"

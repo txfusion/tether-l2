@@ -1,7 +1,7 @@
 import "@nomiclabs/hardhat-ethers";
 import { Wallet } from "ethers";
 import { Deployer } from "./utils/deployer";
-import { ERC20Token__factory } from "../typechain/index";
+import { ERC20Token__factory } from "../typechain";
 import {
   IS_LOCAL,
   PRIVATE_KEY,

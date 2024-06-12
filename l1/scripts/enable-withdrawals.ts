@@ -1,8 +1,6 @@
 import { Wallet as ZkSyncWallet, Provider } from "zksync-ethers";
-import { Wallet } from "ethers";
-import { formatUnits } from "ethers/lib/utils";
+import { ethers } from "ethers";
 
-import { Deployer } from "./utils/deployer";
 import {
   PRIVATE_KEY,
   defaultL1Bridge,
@@ -15,8 +13,8 @@ const provider = ethereumProvider();
 const zkProvider = zkSyncProvider();
 
 async function main() {
-  const deployWallet = new Wallet(PRIVATE_KEY, provider);
-  const zkWallet = new ZkSyncWallet(PRIVATE_KEY, zkProvider);
+  const deployWallet = new ethers.Wallet(PRIVATE_KEY, provider);
+  const zkWallet = new ZkSyncWallet(PRIVATE_KEY, zkProvider, provider);
 
   const gasPrice = await provider.getGasPrice();
 
@@ -25,7 +23,9 @@ async function main() {
 
   console.log(`Using L1 wallet: ${deployWallet.address}`);
   console.log(`Using L2 wallet: ${zkWallet.address}`);
-  console.log(`Using gas price: ${formatUnits(gasPrice, "gwei")} gwei`);
+  console.log(
+    `Using gas price: ${ethers.utils.formatUnits(gasPrice, "gwei")} gwei`
+  );
   console.log(`Using L1 Bridge: ${l1Bridge.address}`);
   console.log(`Using L2 Bridge: ${l2Bridge.address}`);
 
