@@ -237,7 +237,7 @@ describe("~~~~~ L2 Shared Bridge ~~~~~", async () => {
       let deltaL2TokenSupply;
       const l2_TotalSupply_Before = await l2Token.totalSupply();
 
-      await expect(
+      expect(
         await l2SharedBridge
           .connect(l1SharedBridge)
           .finalizeDeposit(
@@ -260,11 +260,6 @@ describe("~~~~~ L2 Shared Bridge ~~~~~", async () => {
         );
 
       const l2_TotalSupply_AfterFirstTx = await l2Token.totalSupply();
-
-      console.log(
-        "L2 token's suplly after finalize deposit:",
-        l2_TotalSupply_AfterFirstTx
-      );
 
       deltaL2TokenSupply = l2_TotalSupply_AfterFirstTx.sub(
         l2_TotalSupply_Before

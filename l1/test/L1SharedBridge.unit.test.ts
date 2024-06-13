@@ -170,51 +170,59 @@ describe("~~~~~ L1 Shared Bridge ~~~~~", async () => {
       assert.isFalse(await l1SharedBridge.isWithdrawalsEnabled());
     });
 
-    it(">>> Works as expected", async () => {
+    it("should revert if the L1 token is not correct", async () => {
+      const {
+        accounts: { deployer, stranger },
+        l1SharedBridge,
+      } = ctx;
+
+      const l2ToL1message = ethers.utils.hexConcat([
+        "0x11a2ccc1",
+        deployer.address,
+        stranger.address,
+        ethers.constants.HashZero,
+      ]);
+
+      expect(
+        await l1SharedBridge
+          .connect(deployer)
+          .finalizeWithdrawal(
+            CHAIN_ID,
+            0,
+            0,
+            0,
+            l2ToL1message,
+            Array(9).fill(ethers.constants.HashZero)
+          )
+      ).to.be.revertedWith("ShB unsupported L1 token");
+    });
+
+    it("should revert if the proof cannot be found", async () => {
       const {
         accounts: { deployer },
         stubs: { l1Token },
         l1SharedBridge,
       } = ctx;
 
-      const amount = ethers.utils.parseUnits("1", "ether");
-
-      const recipientBalanceBefore = await l1Token.balanceOf(deployer.address);
-      // transfer tokens to L1 bridge to simulate locked funds
-      await l1Token.transfer(l1SharedBridge.address, amount);
-      const bridgeBalanceBefore = await l1Token.balanceOf(
-        l1SharedBridge.address
-      );
-
-      const txHash = await withdraw(
-        deployer,
+      const l2ToL1message = ethers.utils.hexConcat([
+        "0x11a2ccc1",
+        deployer.address,
         l1Token.address,
-        amount,
-        l1SharedBridge.address
-      );
-
-      // validate withdrawal marked as finalized
-      assert.isTrue(await deployer.isWithdrawalFinalized(txHash));
-
-      const recipientL1TokenBalance = await l1Token.balanceOf(deployer.address);
-      const bridgeL1TokenBalance = await l1Token.balanceOf(
-        l1SharedBridge.address
-      );
-
-      // validate balance of the recipient increased
-      expect(
-        recipientL1TokenBalance.eq(recipientBalanceBefore.add(amount)),
-        `Value ${recipientL1TokenBalance.toString()} is not equal to ${recipientBalanceBefore
-          .add(amount)
-          .toString()}`
-      );
+        ethers.constants.HashZero,
+      ]);
 
       expect(
-        bridgeL1TokenBalance.eq(bridgeBalanceBefore.sub(amount)),
-        `Value ${bridgeL1TokenBalance.toString()} is not equal to ${bridgeBalanceBefore
-          .sub(amount)
-          .toString()}`
-      );
+        await l1SharedBridge
+          .connect(deployer)
+          .finalizeWithdrawal(
+            CHAIN_ID,
+            0,
+            0,
+            0,
+            l2ToL1message,
+            Array(9).fill(ethers.constants.HashZero)
+          )
+      ).to.be.revertedWith("ShB withd w proof");
     });
   });
 });
@@ -258,13 +266,13 @@ const claimFailedDeposit = async (
 
 const withdraw = async (
   wallet: Wallet,
-  l1TokenAddress: string,
+  l2TokenAddress: string,
   amount: BigNumber,
   bridgeAddress: string,
   errorMsg?: string
 ): Promise<string> => {
   const req = {
-    token: l1TokenAddress,
+    token: l2TokenAddress,
     amount,
     bridgeAddress,
   };

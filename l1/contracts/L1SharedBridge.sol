@@ -51,6 +51,10 @@ contract L1SharedBridge is
     BridgeableTokensUpgradable,
     BridgingManagerUpgradeable
 {
+    ////////////////////////////
+    //    State Variables     //
+    ///////////////////////////
+
     using SafeERC20 for IERC20;
 
     /// @dev Bridgehub smart contract that is used to operate with L2 via asynchronous L2 <-> L1 communication.
@@ -84,6 +88,10 @@ contract L1SharedBridge is
     /// NOTE: this function may be removed in the future, don't rely on it!
     mapping(uint256 chainId => mapping(address l1Token => uint256 balance)) public chainBalance;
 
+    ///////////////////////
+    //     Modifiers     //
+    //////////////////////
+
     /// @notice Checks that the message sender is the bridgehub.
     modifier onlyBridgehub() {
         require(msg.sender == address(BRIDGE_HUB), "ShB not BH");
@@ -99,6 +107,10 @@ contract L1SharedBridge is
         _;
     }
 
+    ////////////////////////
+    //    Constructor     //
+    ///////////////////////
+
     /// @dev Contract is expected to be used as proxy implementation.
     /// @dev Initialize the implementation to prevent Parity hack.
     constructor(
@@ -113,11 +125,17 @@ contract L1SharedBridge is
         ERA_DIAMOND_PROXY = _eraDiamondProxy;
     }
 
+    ////////////////////////
+    //    Initializer     //
+    ///////////////////////
+
     /// @dev Initializes a contract bridge for later use. Expected to be used in the proxy
     /// @param _owner Address which can change L2 token implementation and upgrade the bridge
     /// implementation. The owner is the Governor and separate from the ProxyAdmin from now on, so that the Governor can call the bridge.
+    /// @param _l1Token address of the L1 token
     function initialize(address _owner, address _l1Token)
         external
+        reentrancyGuardInitializer
         initializer
         onlyNonZeroAddress(_l1Token)
         onlyNonZeroAddress(_owner)
@@ -130,14 +148,9 @@ contract L1SharedBridge is
         _setL1Token(_l1Token);
     }
 
-    function receiveEth(uint256 _chainId) external payable {
-        require(BRIDGE_HUB.getHyperchain(_chainId) == msg.sender, "receiveEth not state transition");
-    }
-
-    /// @dev Initializes the l2Bridge address by governance for a specific chain.
-    function initializeChainGovernance(uint256 _chainId, address _l2BridgeAddress) external onlyOwner {
-        l2BridgeAddress[_chainId] = _l2BridgeAddress;
-    }
+    //////////////////////////////////////
+    //    Public/External Functions     //
+    /////////////////////////////////////
 
     /// @notice Allows bridgehub to acquire mintValue for L1->L2 transactions.
     /// @dev If the corresponding L2 transaction fails, refunds are issued to a refund recipient on L2.
@@ -169,17 +182,6 @@ contract L1SharedBridge is
         emit BridgehubDepositBaseTokenInitiated(_chainId, _prevMsgSender, _l1Token, _amount);
     }
 
-    /// @dev Transfers tokens from the depositor address to the smart contract address.
-    /// @return The difference between the contract balance before and after the transferring of funds.
-    function _depositFunds(address _from, IERC20 _token, uint256 _amount) internal returns (uint256) {
-        uint256 balanceBefore = _token.balanceOf(address(this));
-        // slither-disable-next-line arbitrary-send-erc20
-        _token.safeTransferFrom(_from, address(this), _amount);
-        uint256 balanceAfter = _token.balanceOf(address(this));
-
-        return balanceAfter - balanceBefore;
-    }
-
     /// @notice Initiates a deposit transaction within Bridgehub, used by `requestL2TransactionTwoBridges`.
     function bridgehubDeposit(
         uint256 _chainId,
@@ -200,7 +202,7 @@ contract L1SharedBridge is
 
         (address _l1Token, uint256 _depositAmount, address _l2Receiver) = abi.decode(_data, (address, uint256, address));
 
-        require(BRIDGE_HUB.baseToken(_chainId) != _l1Token, "ShB: baseToken deposit not supported"); // TODO: Confirm if the check is needed
+        // require(BRIDGE_HUB.baseToken(_chainId) != _l1Token, "ShB: baseToken deposit not supported"); // TODO: Confirm if the check is needed
         require(_isL1TokenSupported(_l1Token), "ShB: unsupported L1 token");
 
         require(msg.value == 0, "ShB m.v > 0 for BH d.it 2");
@@ -248,22 +250,13 @@ contract L1SharedBridge is
         emit BridgehubDepositFinalized(_chainId, _txDataHash, _txHash);
     }
 
-    /// @dev Generate a calldata for calling the deposit finalization on the L2 bridge contract
-    function _getDepositL2Calldata(address _l1Sender, address _l2Receiver, address _l1Token, uint256 _amount)
-        internal
-        view
-        returns (bytes memory)
-    {
-        bytes memory gettersData = _getERC20Getters(_l1Token);
-        return abi.encodeCall(IL2Bridge.finalizeDeposit, (_l1Sender, _l2Receiver, _l1Token, _amount, gettersData));
+    function receiveEth(uint256 _chainId) external payable {
+        require(BRIDGE_HUB.getHyperchain(_chainId) == msg.sender, "receiveEth not state transition");
     }
 
-    /// @dev Receives and parses (name, symbol, decimals) from the token contract
-    function _getERC20Getters(address _token) internal view returns (bytes memory) {
-        (, bytes memory data1) = _token.staticcall(abi.encodeCall(IERC20Metadata.name, ()));
-        (, bytes memory data2) = _token.staticcall(abi.encodeCall(IERC20Metadata.symbol, ()));
-        (, bytes memory data3) = _token.staticcall(abi.encodeCall(IERC20Metadata.decimals, ()));
-        return abi.encode(data1, data2, data3);
+    /// @dev Initializes the l2Bridge address by governance for a specific chain.
+    function initializeChainGovernance(uint256 _chainId, address _l2BridgeAddress) external onlyOwner {
+        l2BridgeAddress[_chainId] = _l2BridgeAddress;
     }
 
     /// @dev Withdraw funds from the initiated deposit, that failed when finalizing on L2
@@ -285,32 +278,7 @@ contract L1SharedBridge is
         uint256 _l2MessageIndex,
         uint16 _l2TxNumberInBatch,
         bytes32[] calldata _merkleProof
-    ) external override {
-        _claimFailedDeposit({
-            _chainId: _chainId,
-            _depositSender: _depositSender,
-            _l1Token: _l1Token,
-            _amount: _amount,
-            _l2TxHash: _l2TxHash,
-            _l2BatchNumber: _l2BatchNumber,
-            _l2MessageIndex: _l2MessageIndex,
-            _l2TxNumberInBatch: _l2TxNumberInBatch,
-            _merkleProof: _merkleProof
-        });
-    }
-
-    /// @dev Processes claims of failed deposit.
-    function _claimFailedDeposit(
-        uint256 _chainId,
-        address _depositSender,
-        address _l1Token,
-        uint256 _amount,
-        bytes32 _l2TxHash,
-        uint256 _l2BatchNumber,
-        uint256 _l2MessageIndex,
-        uint16 _l2TxNumberInBatch,
-        bytes32[] calldata _merkleProof
-    ) internal nonReentrant whenNotPaused {
+    ) external override whenNotPaused {
         {
             bool proofValid = BRIDGE_HUB.proveL1ToL2TransactionStatus({
                 _chainId: _chainId,
@@ -346,6 +314,12 @@ contract L1SharedBridge is
         emit ClaimedFailedDepositSharedBridge(_chainId, _depositSender, _l1Token, _amount);
     }
 
+    struct MessageParams {
+        uint256 l2BatchNumber;
+        uint256 l2MessageIndex;
+        uint16 l2TxNumberInBatch;
+    }
+
     /// @notice Finalize the withdrawal and release funds
     /// @param _chainId The chain ID of the transaction to check
     /// @param _l2BatchNumber The L2 batch number where the withdrawal was processed
@@ -360,32 +334,7 @@ contract L1SharedBridge is
         uint16 _l2TxNumberInBatch,
         bytes calldata _message,
         bytes32[] calldata _merkleProof
-    ) external override whenWithdrawalsEnabled {
-        _finalizeWithdrawal({
-            _chainId: _chainId,
-            _l2BatchNumber: _l2BatchNumber,
-            _l2MessageIndex: _l2MessageIndex,
-            _l2TxNumberInBatch: _l2TxNumberInBatch,
-            _message: _message,
-            _merkleProof: _merkleProof
-        });
-    }
-
-    struct MessageParams {
-        uint256 l2BatchNumber;
-        uint256 l2MessageIndex;
-        uint16 l2TxNumberInBatch;
-    }
-
-    /// @dev Internal function that handles the logic for finalizing withdrawals.
-    function _finalizeWithdrawal(
-        uint256 _chainId,
-        uint256 _l2BatchNumber,
-        uint256 _l2MessageIndex,
-        uint16 _l2TxNumberInBatch,
-        bytes calldata _message,
-        bytes32[] calldata _merkleProof
-    ) internal nonReentrant whenNotPaused returns (address l1Receiver, address l1Token, uint256 amount) {
+    ) external override nonReentrant whenWithdrawalsEnabled whenNotPaused {
         require(!isWithdrawalFinalized[_chainId][_l2BatchNumber][_l2MessageIndex], "Withdrawal is already finalized");
         isWithdrawalFinalized[_chainId][_l2BatchNumber][_l2MessageIndex] = true;
 
@@ -394,8 +343,8 @@ contract L1SharedBridge is
             l2MessageIndex: _l2MessageIndex,
             l2TxNumberInBatch: _l2TxNumberInBatch
         });
-        (l1Receiver, l1Token, amount) = _checkWithdrawal(_chainId, messageParams, _message, _merkleProof);
-        require(_isL1TokenSupported(l1Token), "ShB unsupported L1 token");
+        (address l1Receiver, address l1Token, uint256 amount) =
+            _checkWithdrawal(_chainId, messageParams, _message, _merkleProof);
 
         if (!hyperbridgingEnabled[_chainId]) {
             // Check that the chain has sufficient balance
@@ -419,6 +368,55 @@ contract L1SharedBridge is
         emit WithdrawalFinalizedSharedBridge(_chainId, l1Receiver, l1Token, amount);
     }
 
+    /// @notice Pauses all functions marked with the `whenNotPaused` modifier.
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /// @notice Unpauses the contract, allowing all functions marked with the `whenNotPaused` modifier to be called again.
+    function unpause() external onlyOwner {
+        _unpause();
+    }
+
+    /// @notice Updates the allowed L1 token.
+    /// @param _l1Token The address of the new allowed L1 token.
+    function setL1Token(address _l1Token) external onlyOwner {
+        _setL1Token(_l1Token);
+    }
+
+    ///////////////////////////////////////
+    //    Private/Internal Functions     //
+    //////////////////////////////////////
+
+    /// @dev Transfers tokens from the depositor address to the smart contract address.
+    /// @return The difference between the contract balance before and after the transferring of funds.
+    function _depositFunds(address _from, IERC20 _token, uint256 _amount) internal returns (uint256) {
+        uint256 balanceBefore = _token.balanceOf(address(this));
+        // slither-disable-next-line arbitrary-send-erc20
+        _token.safeTransferFrom(_from, address(this), _amount);
+        uint256 balanceAfter = _token.balanceOf(address(this));
+
+        return balanceAfter - balanceBefore;
+    }
+
+    /// @dev Generate a calldata for calling the deposit finalization on the L2 bridge contract
+    function _getDepositL2Calldata(address _l1Sender, address _l2Receiver, address _l1Token, uint256 _amount)
+        internal
+        view
+        returns (bytes memory)
+    {
+        bytes memory gettersData = _getERC20Getters(_l1Token);
+        return abi.encodeCall(IL2Bridge.finalizeDeposit, (_l1Sender, _l2Receiver, _l1Token, _amount, gettersData));
+    }
+
+    /// @dev Receives and parses (name, symbol, decimals) from the token contract
+    function _getERC20Getters(address _token) internal view returns (bytes memory) {
+        (, bytes memory data1) = _token.staticcall(abi.encodeCall(IERC20Metadata.name, ()));
+        (, bytes memory data2) = _token.staticcall(abi.encodeCall(IERC20Metadata.symbol, ()));
+        (, bytes memory data3) = _token.staticcall(abi.encodeCall(IERC20Metadata.decimals, ()));
+        return abi.encode(data1, data2, data3);
+    }
+
     /// @dev Verifies the validity of a withdrawal message from L2 and returns details of the withdrawal.
     function _checkWithdrawal(
         uint256 _chainId,
@@ -427,6 +425,8 @@ contract L1SharedBridge is
         bytes32[] calldata _merkleProof
     ) internal view returns (address l1Receiver, address l1Token, uint256 amount) {
         (l1Receiver, l1Token, amount) = _parseL2WithdrawalMessage(_chainId, _message);
+        require(_isL1TokenSupported(l1Token), "ShB unsupported L1 token");
+
         L2Message memory l2ToL1Message;
         {
             bool baseTokenWithdrawal = (l1Token == BRIDGE_HUB.baseToken(_chainId));
@@ -486,33 +486,28 @@ contract L1SharedBridge is
         }
     }
 
-    /*//////////////////////////////////////////////////////////////
-                            ERA LEGACY FUNCTIONS
-    //////////////////////////////////////////////////////////////*/
+    /////////////////////////////////
+    //    Era Legacy Functions     //
+    ////////////////////////////////
+
     /* 
     * NOTE: For Tether, there will not be a legacy bridge, as old USDT bridge and its tokens (and their L2 counterparts) 
     * will be treated as "bridged" USDT and the new ones (which will use this bridge) will be treated as "native ZKsync" USDT.
-    * Functions related to the legacy bridge will be kept for SDK compatibility.
+    * Functions related to the legacy bridge will be kept for the sake of the interface and they cannot be used.
     */
-
     function depositLegacyErc20Bridge(address, address, address, uint256, uint256, uint256, address)
         external
         payable
         override
-        nonReentrant
-        returns (bytes32 l2TxHash)
-    {
-        l2TxHash = bytes32(0);
-    }
+        returns (bytes32)
+    {}
 
     function finalizeWithdrawalLegacyErc20Bridge(uint256, uint256, uint16, bytes calldata, bytes32[] calldata)
         external
         pure
         override
-        returns (address l1Receiver, address l1Token, uint256 amount)
-    {
-        (l1Receiver, l1Token, amount) = (address(0), address(0), 0);
-    }
+        returns (address, address, uint256)
+    {}
 
     function claimFailedDepositLegacyErc20Bridge(
         address,
@@ -525,33 +520,9 @@ contract L1SharedBridge is
         bytes32[] calldata
     ) external pure override {}
 
-    function L1_WETH_TOKEN() external pure override returns (address) {
-        return address(0);
-    }
-
-    function legacyBridge() external pure override returns (IL1ERC20Bridge) {
-        return IL1ERC20Bridge(address(0));
-    }
-
+    function L1_WETH_TOKEN() external pure override returns (address) {}
+    function legacyBridge() external pure override returns (IL1ERC20Bridge) {}
     function setEraPostDiamondUpgradeFirstBatch(uint256) external override {}
     function setEraPostLegacyBridgeUpgradeFirstBatch(uint256) external override {}
     function setEraLegacyBridgeLastDepositTime(uint256, uint256) external override {}
-
-    /*//////////////////////////////////////////////////////////////
-                            PAUSE
-    //////////////////////////////////////////////////////////////*/
-
-    /// @notice Pauses all functions marked with the `whenNotPaused` modifier.
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    /// @notice Unpauses the contract, allowing all functions marked with the `whenNotPaused` modifier to be called again.
-    function unpause() external onlyOwner {
-        _unpause();
-    }
-
-    function setL1Token(address _l1Token) external onlyOwner {
-        _setL1Token(_l1Token);
-    }
 }

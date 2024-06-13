@@ -16,6 +16,7 @@
     "test": "hardhat test ./test/*.test.ts",
     "test:unit": "hardhat test ./test/*.unit.test.ts",
     "test:e2e": "hardhat test ./test/*.e2e.test.ts",
+    "test:e2e-fresh": "cd .. && npm run compile && npm run deploy && cd l1 && npm run test:e2e",
     "test:deployment-acceptance": "hardhat test ./test/deployment.acceptance.test.ts"
   },
   "license": "ISC",

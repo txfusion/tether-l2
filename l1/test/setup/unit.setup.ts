@@ -30,9 +30,7 @@ export async function setup() {
     ethereumProvider()
   );
 
-  // ********** Stubs **********
-  let i = 0;
-  // console.log(++i);
+  // ********** Stubs **********=
   // - L1 Token
   const l1TokenStub = await (
     await new ERC20BridgedStub__factory(deployer._signerL1()).deploy(
@@ -42,19 +40,16 @@ export async function setup() {
   ).deployed();
 
   // - L2 Token
-  // console.log(++i);
   const l2TokenStub = await (
     await new EmptyContractStub__factory(deployer._signerL1()).deploy()
   ).deployed();
 
   // - L2 Bridge
-  // console.log(++i);
   const l2Bridge = await (
     await new L2SharedBridgeStub__factory(deployer._signerL1()).deploy(CHAIN_ID)
   ).deployed();
 
   // L1 Bridge
-  // console.log(++i);
   const l1SharedBridgeImpl = await (
     await new L1SharedBridge__factory(deployer._signerL1()).deploy(
       constants.AddressZero,
@@ -66,7 +61,6 @@ export async function setup() {
     )
   ).deployed();
 
-  // console.log(++i);
   const l1SharedBridgeProxy = await (
     await new TransparentUpgradeableProxy__factory(deployer._signerL1()).deploy(
       l1SharedBridgeImpl.address,
@@ -78,10 +72,7 @@ export async function setup() {
     )
   ).deployed();
 
-  // console.log(++i);
-
   const AMOUNT = ethers.utils.parseUnits("1", "ether");
-
   if ((await l1TokenStub.balanceOf(deployer.address)).lt(AMOUNT)) {
     await l1TokenStub.bridgeMint(deployer.address, AMOUNT);
   }

@@ -298,7 +298,7 @@ describe("~~~ Bridge E2E testing", async () => {
 
       await expect(
         deployer.finalizeWithdrawal(withdrawTxHash)
-      ).to.be.revertedWith("Withdrawal is already finalized");
+      ).to.be.revertedWith("revert: Withdrawal is already finalized");
     });
   });
 });
