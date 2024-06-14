@@ -187,7 +187,7 @@ contract L1SharedBridge is
         uint256 _chainId,
         address _prevMsgSender,
         // solhint-disable-next-line no-unused-vars
-        uint256 _l2Value,
+        uint256,
         bytes calldata _data
     )
         external
@@ -202,7 +202,6 @@ contract L1SharedBridge is
 
         (address _l1Token, uint256 _depositAmount, address _l2Receiver) = abi.decode(_data, (address, uint256, address));
 
-        // require(BRIDGE_HUB.baseToken(_chainId) != _l1Token, "ShB: baseToken deposit not supported"); // TODO: Confirm if the check is needed
         require(_isL1TokenSupported(_l1Token), "ShB: unsupported L1 token");
 
         require(msg.value == 0, "ShB m.v > 0 for BH d.it 2");
@@ -299,7 +298,6 @@ contract L1SharedBridge is
             chainBalance[_chainId][_l1Token] -= _amount;
         }
 
-        // Note: allow deposits of base tokens as well? if not, then add onlySupportedL1Token(_l1Token) modifier
         if (_l1Token == ETH_TOKEN_ADDRESS) {
             bool callSuccess;
             // Low-level assembly call, to avoid any memory copying (save gas)
@@ -352,7 +350,6 @@ contract L1SharedBridge is
             chainBalance[_chainId][l1Token] -= amount;
         }
 
-        // Note: allow withdrawal of base tokens as well? Won't work with _isL1TokenSupported() require
         if (l1Token == ETH_TOKEN_ADDRESS) {
             bool callSuccess;
             // Low-level assembly call, to avoid any memory copying (save gas)

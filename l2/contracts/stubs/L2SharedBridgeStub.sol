@@ -6,11 +6,12 @@ import {IL1ERC20Bridge} from "@matterlabs/zksync-contracts/l2-contracts/contract
 import {IL2SharedBridge} from
     "@matterlabs/zksync-contracts/l2-contracts/contracts/bridge/interfaces/IL2SharedBridge.sol";
 
-/// @notice The L2 token bridge works with the L1 token bridge to enable ERC20 token bridging
-///     between L1 and L2. Mints tokens during deposits and burns tokens during withdrawals.
-///     Additionally, adds the methods for bridging management: enabling and disabling withdrawals/deposits
 contract L2SharedBridgeStub is IL2SharedBridge {
-    /// @dev The address of the L1 bridge counterpart.
+    ////////////////////////////
+    //    State Variables     //
+    ///////////////////////////
+
+    /// @dev The address of the L1 shared bridge counterpart.
     address public override l1SharedBridge;
     address public l1Token;
     address public l2Token;
@@ -20,10 +21,13 @@ contract L2SharedBridgeStub is IL2SharedBridge {
 
     /// @dev Contract is expected to be used as proxy implementation.
     /// @dev Disable the initialization to prevent Parity hack.
-    constructor(uint256 _eraChainId) {
-        ERA_CHAIN_ID = _eraChainId;
-        // _disableInitializers();
+    constructor(uint256) {
+        _disableInitializers();
     }
+
+    //////////////////////////////////////
+    //    Public/External Functions     //
+    /////////////////////////////////////
 
     /// @notice Initializes the bridge contract for later use. Expected to be used in the proxy.
     /// @param _l1SharedBridge The address of the L1 Bridge contract.
@@ -60,28 +64,39 @@ contract L2SharedBridgeStub is IL2SharedBridge {
         emit WithdrawalInitiated(msg.sender, _l1Receiver, _l2Token, _amount);
     }
 
-    function setL2Token(address l2Token_) external {
-        l2Token = l2Token_;
+    /// @notice Updates the allowed L1 token that can be bridged over to L2.
+    /// @param l1Token_ The address of the new allowed L1 token.
+    function setL1Token(address l1Token_) external onlyOwner {
+        _setL1Token(l1Token_);
     }
 
-    function l1Bridge() public view override returns (address) {
-        return address(0);
+    /// @notice Updates the allowed L2 token that can be minted/burned by this bridge.
+    /// @param l2Token_ The address of the new allowed L2 token.
+    function setL2Token(address l2Token_) external onlyOwner {
+        _setL2Token(l2Token_);
     }
 
     /// @return Address of an L1 token counterpart
     function l1TokenAddress(address) public view override returns (address) {
-        return l1Token;
+        return l1Token();
     }
 
-    /// @return Address of an L2 token counterpart
+    /// @return Address of an L2 token
     function l2TokenAddress(address) public view override returns (address) {
-        return l2Token;
+        return l2Token();
     }
+
+    /// @return Address of the legacy bridge on L1
+    function l1Bridge() public view override returns (address) {}
+
+    //////////////////////////////////////
+    //    Private/Internal Functions    //
+    /////////////////////////////////////
 
     /// @dev Encode the message for l2ToL1log sent with withdraw initialization
     function _getL1WithdrawMessage(address _to, uint256 _amount) internal view returns (bytes memory) {
         // note we use the IL1ERC20Bridge.finalizeWithdrawal function selector to specify the selector for L1<>L2 messages,
         // and we use this interface so that when the switch happened the old messages could be processed
-        return abi.encodePacked(IL1ERC20Bridge.finalizeWithdrawal.selector, _to, l1Token, _amount);
+        return abi.encodePacked(IL1ERC20Bridge.finalizeWithdrawal.selector, _to, l1Token(), _amount);
     }
 }

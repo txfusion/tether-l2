@@ -28,6 +28,7 @@ contract L2SharedBridge is
     ////////////////////////////
     //    State Variables     //
     ///////////////////////////
+    
     /// @dev The address of the L1 shared bridge counterpart.
     address public override l1SharedBridge;
 
