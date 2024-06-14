@@ -1,170 +1,106 @@
-import { Wallet, Provider, utils, Contract } from "zksync-ethers";
-import * as ethers from "ethers";
-import * as path from "path";
+import { Wallet as ZkWallet } from "zksync-ethers";
+import { ethers } from "ethers";
 import {
-  getAddressFromEnv,
-  web3Provider,
-  zkSyncUrl,
-  readInterface,
-} from "../utils/utils";
-import { L2_ERC20_BRIDGED_CONSTANTS } from "../../../l2/scripts/utils/constants";
+  CHAIN_ID,
+  PRIVATE_KEY,
+  ethereumProvider,
+  tetherTokenL1,
+  tetherTokenL2,
+  zkSyncProvider,
+  TETHER_CONSTANTS,
+  deployedAddressesFromEnv,
+} from "../../../common-utils";
 
-const l1ArtifactsPath = path.join(
-  path.resolve(__dirname, "../.."),
-  "artifacts/l1/contracts"
-);
+const AMOUNT_TO_DEPOSIT = ethers.utils.parseEther("0.001").toString();
+const ADDRESSES = deployedAddressesFromEnv();
 
-const l2ArtifactsPath = path.join(
-  path.resolve(__dirname, "../../..", "l2"),
-  "artifacts-zk/l2/contracts"
-);
+const provider = ethereumProvider();
+const zkProvider = zkSyncProvider();
 
-const L1_BRIDGE_PROXY_ADDR = getAddressFromEnv(
-  "CONTRACTS_L1_BRIDGE_PROXY_ADDR"
-);
-const L1_BRIDGE_PROXY_INTERFACE = readInterface(
-  l1ArtifactsPath,
-  "L1ERC20Bridge"
-);
-const L1_TOKEN_ADDR = getAddressFromEnv("CONTRACTS_L1_TOKEN_ADDR");
-const L1_TOKEN_INTERFACE = readInterface(
-  path.join(l1ArtifactsPath, "token"),
-  "ERC20Token"
-);
-
-const L2_TOKEN_ADDR = getAddressFromEnv("CONTRACTS_L2_TOKEN_PROXY_ADDR");
-const L2_TOKEN_INTERFACE = readInterface(
-  path.join(l2ArtifactsPath, "token"),
-  L2_ERC20_BRIDGED_CONSTANTS.CONTRACT_NAME
-);
-
-const AMOUNT_TO_DEPOSIT = ethers.utils.parseEther("0.001");
-
-const PRIVATE_KEY = process.env.PRIVATE_KEY as string;
-
-const provider = web3Provider();
-const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
-const zkProvider = new Provider(zkSyncUrl());
-const zkWallet = new Wallet(PRIVATE_KEY, zkProvider, provider);
+// const wallet = new Wallet(PRIVATE_KEY, provider);
+const wallet = new ZkWallet(PRIVATE_KEY, zkProvider, provider);
 
 async function main() {
-  console.log("Running script to deposit ERC20 to zkSync");
-
-  const l1TokenContract = new ethers.Contract(
-    L1_TOKEN_ADDR,
-    L1_TOKEN_INTERFACE,
-    wallet
-  );
-  const l1BridgeContract = new ethers.Contract(
-    L1_BRIDGE_PROXY_ADDR,
-    L1_BRIDGE_PROXY_INTERFACE,
-    wallet
-  );
-  const l2TokenContract = new Contract(
-    L2_TOKEN_ADDR,
-    L2_TOKEN_INTERFACE,
-    zkWallet
-  );
-
-  // Mint tokens to L1 account
-  const mintResponse = await l1TokenContract.mint(
-    wallet.address,
-    AMOUNT_TO_DEPOSIT,
-    { gasLimit: 10_000_000 }
-  );
-
-  await mintResponse.wait();
-
-  // Set allowance to L1 bridge
-  const allowanceResponse = await l1TokenContract.approve(
-    l1BridgeContract.address,
-    AMOUNT_TO_DEPOSIT,
-    { gasLimit: 10_000_000 }
-  );
-  await allowanceResponse.wait();
   console.log(
-    `L1 Bridge allowance: ${await l1TokenContract.allowance(
-      wallet.address,
-      l1BridgeContract.address
-    )}`
+    `========== Depositing ${AMOUNT_TO_DEPOSIT} ${TETHER_CONSTANTS.SYMBOL} to a hyperchain with chain id = ${CHAIN_ID} ==========`
   );
 
-  console.log("\n================== BEFORE DEPOSIT =================");
+  const l1Token = tetherTokenL1(wallet._signerL1());
+  const l2Token = tetherTokenL2(wallet._signerL2());
+
   console.log(
-    `Account token balance on L1: ${await l1TokenContract.balanceOf(
-      wallet.address
-    )}`
+    `>>> 1) Minting ${AMOUNT_TO_DEPOSIT} L1 tokens to ${wallet.address}`
   );
-  console.log(
-    `Bridge token balance on L1 (locked): ${await l1TokenContract.balanceOf(
-      l1BridgeContract.address
-    )}`
-  );
-  console.log(
-    `Account token balance on L2: ${await l2TokenContract.balanceOf(
-      wallet.address
-    )}`
-  );
-
-  const depositTx = await l1BridgeContract.populateTransaction[
-    "deposit(address,address,uint256,uint256,uint256,address)"
-  ](
-    wallet.address,
-    l1TokenContract.address,
-    AMOUNT_TO_DEPOSIT,
-    ethers.BigNumber.from(10_000_000),
-    utils.REQUIRED_L1_TO_L2_GAS_PER_PUBDATA_LIMIT,
-    wallet.address,
-    { gasLimit: 10_000_000 }
-  );
-
-  // call to RPC method zks_estimateGasL1ToL2 to estimate L2 gas limit
-  const l2GasLimit = await zkProvider.estimateGasL1(depositTx);
-  const l2GasPrice = await zkProvider.getGasPrice();
-
-  const baseCost = await zkWallet.getBaseCost({
-    gasLimit: l2GasLimit,
-    gasPrice: l2GasPrice,
-    gasPerPubdataByte: utils.REQUIRED_L1_TO_L2_GAS_PER_PUBDATA_LIMIT,
-  });
-
-  const depositResponse = await l1BridgeContract[
-    "deposit(address,address,uint256,uint256,uint256,address)"
-  ](
-    wallet.address,
-    l1TokenContract.address,
-    AMOUNT_TO_DEPOSIT,
-    l2GasLimit,
-    utils.REQUIRED_L1_TO_L2_GAS_PER_PUBDATA_LIMIT,
-    wallet.address,
-    {
-      value: baseCost,
+  await (
+    await l1Token.mint(wallet.address, AMOUNT_TO_DEPOSIT, {
       gasLimit: 10_000_000,
-    }
-  );
-  await depositResponse.wait();
-
-  const l2Response = await zkProvider.getL2TransactionFromPriorityOp(
-    depositResponse
-  );
-  await l2Response.wait();
-
-  console.log("\n================== AFTER DEPOSIT =================");
+    })
+  ).wait(1);
   console.log(
-    `Account token balance on L1: ${await l1TokenContract.balanceOf(
+    `Account token balance after minting: ${await l1Token.balanceOf(
       wallet.address
+    )}\n`
+  );
+
+  console.log(
+    `>>> Note: Approval of ${AMOUNT_TO_DEPOSIT} tokens to the bridge is done within the 'deposit' call of the SDK`
+  );
+  // console.log(
+  //   `>>> 2) Approving ${AMOUNT_TO_DEPOSIT} tokens to the bridge (done within the deposit call of the SDK)`
+  // );
+  // await (
+  //   await l1Token
+  //     .connect(wallet)
+  //     .approve(ADDRESSES.Bridges.L1SharedBridgeProxy, AMOUNT_TO_DEPOSIT, {
+  //       gasLimit: 10_000_000,
+  //     })
+  // ).wait(1);
+
+  // console.log(
+  //   `L1 Bridge allowance: ${await l1Token.allowance(
+  //     wallet.address,
+  //     ADDRESSES.Bridges.L1SharedBridgeProxy
+  //   )}`
+  // );
+  console.log("----- Setup complete, moving on ------\n");
+
+  console.log("~~~ Pre-deposit checks ~~~");
+  console.log(
+    `Account token balance on L1: ${await l1Token.balanceOf(wallet.address)}`
+  );
+  console.log(
+    `Bridge token balance on L1 (locked): ${await l1Token.balanceOf(
+      ADDRESSES.Bridges.L1SharedBridgeProxy
     )}`
   );
   console.log(
-    `Bridge token balance on L1 (locked): ${await l1TokenContract.balanceOf(
-      l1BridgeContract.address
+    `Account token balance on L2: ${await l2Token.balanceOf(wallet.address)}`
+  );
+  console.log("~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+
+  console.log("~~~ Depositing... ~~~");
+
+  const depositTx = await wallet.deposit({
+    token: l1Token.address,
+    amount: AMOUNT_TO_DEPOSIT,
+    bridgeAddress: ADDRESSES.Bridges.L1SharedBridgeProxy,
+    approveERC20: true,
+  });
+  await depositTx.waitFinalize();
+
+  console.log("\n~~~ Post-deposit checks ~~~");
+  console.log(
+    `Account token balance on L1: ${await l1Token.balanceOf(wallet.address)}`
+  );
+  console.log(
+    `Bridge token balance on L1: ${await l1Token.balanceOf(
+      ADDRESSES.Bridges.L1SharedBridgeProxy
     )}`
   );
   console.log(
-    `Account token balance on L2: ${await l2TokenContract.balanceOf(
-      wallet.address
-    )}`
+    `Account token balance on L2: ${await l2Token.balanceOf(wallet.address)}`
   );
+  console.log("~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 }
 
 main().catch((err) => {

@@ -1,119 +1,134 @@
 import hre, { ethers } from "hardhat";
-import * as path from "path";
-import { Wallet as ZkWallet, Provider as ZkProvider } from "zksync-ethers";
-
+import { Wallet as ZkWallet } from "zksync-ethers";
 import {
-  L1ERC20Bridge__factory,
-  TransparentUpgradeableProxy__factory,
-  ZkSyncStub__factory,
-  EmptyContractStub__factory,
+  CHAIN_ID,
+  PRIVATE_KEY,
+  TETHER_CONSTANTS,
+  defaultL1Bridge,
+  deployedAddressesFromEnv,
+  ethereumProvider,
+  zkSyncProvider,
+} from "../../../common-utils";
+import {
   ERC20BridgedStub__factory,
-  OssifiableProxy__factory,
+  EmptyContractStub__factory,
+  L1SharedBridge__factory,
+  TransparentUpgradeableProxy__factory,
 } from "../../typechain";
-import { L2ERC20BridgeStub__factory } from "../../../l2/typechain";
-import { readBytecode } from "../../scripts/utils/utils";
-
-const l2ProxyArtifactsPath = path.join(
-  path.resolve(__dirname, "../../.."),
-  "l2/artifacts-zk/common/proxy"
-  // "l2/artifacts-zk/@openzeppelin/contracts/proxy/transparent"
-);
-
-// zksync/l2/artifacts-zk/l2/contracts
-const l2ArtifactsPath = path.join(
-  path.resolve(__dirname, "../../.."),
-  "l2/artifacts-zk/l2/contracts"
-);
-
-const L2_BRIDGE_PROXY_BYTECODE = readBytecode(
-  l2ProxyArtifactsPath,
-  "OssifiableProxy"
-  // "TransparentUpgradeableProxy"
-);
-
-const L2_BRIDGE_STUB_BYTECODE = readBytecode(
-  path.join(l2ArtifactsPath, "stubs"),
-  "L2ERC20BridgeStub"
-);
-
-const L1_TOKEN_STUB_NAME = "ERC20 Mock";
-const L1_TOKEN_STUB_SYMBOL = "ERC20";
+import { L2SharedBridgeStub__factory } from "../../../l2/typechain";
+import { constants } from "ethers";
+import { HASHES, grantRole } from "../../scripts/utils/roles";
 
 export async function setup() {
-  const [deployer, governor, sender, recipient, stranger] =
-    await hre.ethers.getSigners();
+  const ADDRESSES = deployedAddressesFromEnv();
 
-  const provider = new ethers.providers.JsonRpcProvider(
-    process.env.ETH_CLIENT_WEB3_URL as string
-  );
-  const zkProvider = new ZkProvider(process.env.ZKSYNC_PROVIDER_URL as string);
-  const zkWallet = new ZkWallet(
-    process.env.PRIVATE_KEY as string,
-    zkProvider,
-    provider
+  const [_, stranger] = await hre.ethers.getSigners();
+
+  const deployer = new ZkWallet(
+    PRIVATE_KEY,
+    zkSyncProvider(),
+    ethereumProvider()
   );
 
-  const zkSyncStub = await new ZkSyncStub__factory(deployer).deploy();
+  // ********** Stubs **********=
+  // - L1 Token
+  const l1TokenStub = await (
+    await new ERC20BridgedStub__factory(deployer._signerL1()).deploy(
+      TETHER_CONSTANTS.NAME,
+      TETHER_CONSTANTS.SYMBOL
+    )
+  ).deployed();
 
-  const l2TokenStub = await new EmptyContractStub__factory(deployer).deploy();
-  const l1TokenStub = await new ERC20BridgedStub__factory(deployer).deploy(
-    L1_TOKEN_STUB_NAME,
-    L1_TOKEN_STUB_SYMBOL
+  // - L2 Token
+  const l2TokenStub = await (
+    await new EmptyContractStub__factory(deployer._signerL1()).deploy()
+  ).deployed();
+
+  // - L2 Bridge
+  const l2Bridge = await (
+    await new L2SharedBridgeStub__factory(deployer._signerL1()).deploy(CHAIN_ID)
+  ).deployed();
+
+  // L1 Bridge
+  const l1SharedBridgeImpl = await (
+    await new L1SharedBridge__factory(deployer._signerL1()).deploy(
+      constants.AddressZero,
+      (
+        await deployer.getBridgehubContract()
+      ).address,
+      CHAIN_ID,
+      deployedAddressesFromEnv().StateTransition.DiamondProxy
+    )
+  ).deployed();
+
+  const l1SharedBridgeProxy = await (
+    await new TransparentUpgradeableProxy__factory(deployer._signerL1()).deploy(
+      l1SharedBridgeImpl.address,
+      l2TokenStub.address, // won't be used
+      L1SharedBridge__factory.createInterface().encodeFunctionData(
+        "initialize",
+        [deployer._signerL1().address, l1TokenStub.address]
+      )
+    )
+  ).deployed();
+
+  const AMOUNT = ethers.utils.parseUnits("1", "ether");
+  if ((await l1TokenStub.balanceOf(deployer.address)).lt(AMOUNT)) {
+    await l1TokenStub.bridgeMint(deployer.address, AMOUNT);
+  }
+
+  const l1SharedBridge = defaultL1Bridge(
+    deployer._signerL1(),
+    l1SharedBridgeProxy.address
   );
 
-  await l1TokenStub.transfer(
-    sender.address,
-    ethers.utils.parseUnits("100", "ether")
+  await grantRole(
+    l1SharedBridge,
+    HASHES.ROLES.DEPOSITS_ENABLER_ROLE,
+    "DEPOSITS_ENABLER_ROLE",
+    [deployer.address]
   );
 
-  const l1Erc20BridgeImpl = await new L1ERC20Bridge__factory(deployer).deploy();
-
-  const requiredValueToInitializeBridge =
-    await zkSyncStub.l2TransactionBaseCost(0, 0, 0);
-
-  // const l1Erc20BridgeProxy = await new TransparentUpgradeableProxy__factory(
-  const l1Erc20BridgeProxy = await new OssifiableProxy__factory(
-    deployer
-  ).deploy(l1Erc20BridgeImpl.address, governor.address, "0x");
-
-  const l1Erc20Bridge = L1ERC20Bridge__factory.connect(
-    l1Erc20BridgeProxy.address,
-    deployer
+  await grantRole(
+    l1SharedBridge,
+    HASHES.ROLES.DEPOSITS_DISABLER_ROLE,
+    "DEPOSITS_DISABLER_ROLE",
+    [deployer.address]
   );
 
-  const initTx = await l1Erc20Bridge.initialize(
-    [L2_BRIDGE_STUB_BYTECODE, L2_BRIDGE_PROXY_BYTECODE],
-    [
-      l1TokenStub.address,
-      l2TokenStub.address,
-      governor.address,
-      deployer.address,
-      zkSyncStub.address,
-    ] as any,
-    requiredValueToInitializeBridge,
-    requiredValueToInitializeBridge
+  await grantRole(
+    l1SharedBridge,
+    HASHES.ROLES.WITHDRAWALS_ENABLER_ROLE,
+    "WITHDRAWALS_ENABLER_ROLE",
+    [deployer.address]
   );
 
-  await initTx.wait();
+  await grantRole(
+    l1SharedBridge,
+    HASHES.ROLES.WITHDRAWALS_DISABLER_ROLE,
+    "WITHDRAWALS_DISABLER_ROLE",
+    [deployer.address]
+  );
+
+  await (
+    await l1SharedBridge.initializeChainGovernance(CHAIN_ID, l2Bridge.address)
+  ).wait();
 
   return {
     accounts: {
       deployer,
-      governor,
-      sender,
-      recipient,
       stranger,
     },
     stubs: {
-      zkSync: zkSyncStub,
       l1Token: l1TokenStub,
       l2Token: l2TokenStub,
-      l2Erc20Bridge: L2ERC20BridgeStub__factory.connect(
-        await l1Erc20Bridge.l2Bridge(),
-        deployer
-      ),
+      l2SharedBridge: l2Bridge,
     },
-    l1Erc20Bridge,
-    zkWallet,
+    l1SharedBridge: defaultL1Bridge(
+      deployer._signerL1(),
+      l1SharedBridgeProxy.address
+    ),
+    ADDRESSES,
+    AMOUNT,
   };
 }

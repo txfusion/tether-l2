@@ -3,14 +3,13 @@
   "version": "0.1.0",
   "scripts": {
     "compile": "hardhat clean && hardhat compile && ts-node utils/generateTypings.ts",
-    "deploy-governance-bridge": "hardhat run ./scripts/deploy-governance-bridge.ts",
-    "deploy-usdt-token": "hardhat run ./scripts/deploy-usdt-token.ts",
+    "02-deploy-usdt-token": "hardhat run ./scripts/02-deploy-usdt-token.ts",
+    "03-deploy-l2-bridge": "hardhat run ./scripts/03-deploy-l2-bridge.ts",
+    "04-connect-token-to-bridge": "hardhat run ./scripts/04-connect-token-to-bridge.ts",
     "upgrade-usdt-token": "hardhat run ./scripts/upgrade-usdt-token.ts",
-    "connect-token-to-bridge": "hardhat run ./scripts/connect-token-to-bridge.ts",
-    "verify-l2-bridge": "hardhat run ./scripts/verify-l2-bridge.ts",
     "test": "hardhat test ./test/*.test.ts",
     "test:unit": "hardhat test ./test/*.unit.test.ts",
-    "test:unit:bridge": "hardhat test ./test/L2ERC20Bridge.unit.test.ts",
+    "test:unit:bridge": "hardhat test ./test/L2SharedBridge.unit.test.ts",
     "test:unit:erc20Bridged": "hardhat test ./test/ERC20Bridged.unit.test.ts"
   },
   "license": "ISC",
@@ -20,10 +19,12 @@
     "@matterlabs/hardhat-zksync-solc": "^1.1.4",
     "@matterlabs/hardhat-zksync-upgradable": "^0.4.1",
     "@matterlabs/hardhat-zksync-verify": "^0.2.0",
+    "@nomicfoundation/hardhat-chai-matchers": "^1.0.6",
     "@nomicfoundation/hardhat-verify": "^1.1.1",
     "@nomiclabs/hardhat-ethers": "^2.2.3",
     "@nomiclabs/hardhat-waffle": "^2.0.6",
     "chai": "^4.3.7",
-    "typechain": "^8.2.0"
+    "typechain": "^8.2.0",
+    "zksync-web3": "^0.14.3"
   }
 }

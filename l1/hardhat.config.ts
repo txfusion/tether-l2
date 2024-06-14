@@ -3,7 +3,6 @@ import { HardhatUserConfig } from "hardhat/config";
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-waffle";
 import "@nomicfoundation/hardhat-verify";
-// import "@openzeppelin/hardhat-upgrades"; // Note: uncommenting this messes up compilation of MatterLabs' contracts
 
 dotenv.config({ path: `../.env` });
 
@@ -11,11 +10,11 @@ const IS_LOCAL = (process.env.NODE_ENV as string) === "local";
 
 const config: HardhatUserConfig & { etherscan: { apiKey: string } } = {
   solidity: {
-    version: "0.8.20",
+    version: "0.8.24",
     settings: {
       optimizer: {
         enabled: true,
-        runs: 100_000,
+        runs: 10_000, // Note: 100_000 runs breaks the Spurious Dragon 24576 bytes size limit, 10_000 doesn't
       },
     },
   },

@@ -7,7 +7,6 @@ pragma solidity ^0.8.20;
 
 /// @notice Proxy
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "../../common/proxy/OssifiableProxy.sol";
 
 /// @notice Interfaces
 import "../../common/interfaces/IERC20Bridged.sol";

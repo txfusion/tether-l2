@@ -1,9 +1,8 @@
 import { describe } from "mocha";
 import { assert, expect } from "chai";
-import { utils } from "zksync-ethers";
 
 import { setup } from "./setup/bridge.setup";
-import { BigNumber } from "ethers";
+import { CHAIN_ID } from "../../common-utils";
 
 describe("~~~ Bridge E2E testing", async () => {
   let ctx: Awaited<ReturnType<typeof setup>>;
@@ -20,14 +19,28 @@ describe("~~~ Bridge E2E testing", async () => {
         l2: { l2Bridge, l2Token },
       } = ctx;
 
-      assert((await l1Bridge.l1Token()) === l1Token.address);
-      assert((await l1Bridge.l2Token()) === l2Token.address);
-      assert((await l1Bridge.l2Bridge()) === l2Bridge.address);
+      assert(
+        (await l1Bridge.l1Token()).toUpperCase() ===
+          l1Token.address.toUpperCase()
+      );
+      assert(
+        (await l1Bridge.l2BridgeAddress(CHAIN_ID)).toUpperCase() ===
+          l2Bridge.address.toUpperCase()
+      );
       assert.isTrue(await l1Bridge.isInitialized());
 
-      assert((await l2Bridge.l1Token()) === l1Token.address);
-      assert((await l2Bridge.l2Token()) === l2Token.address);
-      assert((await l2Bridge.l1Bridge()) === l1Bridge.address);
+      assert(
+        (await l2Bridge.l1Token()).toUpperCase() ===
+          l1Token.address.toUpperCase()
+      );
+      assert(
+        (await l2Bridge.l2Token()).toUpperCase() ===
+          l2Token.address.toUpperCase()
+      );
+      assert(
+        (await l2Bridge.l1SharedBridge()).toUpperCase() ===
+          l1Bridge.address.toUpperCase()
+      );
       assert.isTrue(await l2Bridge.isInitialized());
     });
 
@@ -58,7 +71,7 @@ describe("~~~ Bridge E2E testing", async () => {
   });
 
   describe("=== Deposit + Withdraw ===", async () => {
-    it("> Set allowance for L1ERC20Bridge to deposit", async () => {
+    it("> Set allowance for L1 shared bridge to deposit", async () => {
       const {
         l1: {
           l1Token,
@@ -86,7 +99,7 @@ describe("~~~ Bridge E2E testing", async () => {
       );
     });
 
-    it("> Deposit funds onto L1ERC20Bridge", async () => {
+    it("> Deposit funds onto L1 shared bridge", async () => {
       const {
         l1: { l1Token, l1Bridge, accounts },
         l2: {
@@ -94,9 +107,8 @@ describe("~~~ Bridge E2E testing", async () => {
           l2Bridge,
           accounts: { deployer },
         },
-        zkProvider,
         depositAmount,
-        gasLimit,
+        ADDRESSES,
       } = ctx;
 
       const walletAddress = accounts.deployer.address;
@@ -114,60 +126,25 @@ describe("~~~ Bridge E2E testing", async () => {
        * Befores
        */
       const l2Token_TotalSupply_Before = await l2Token.totalSupply();
-      const l1ERC20Bridge_TokenBalance_Before = await l1Token.balanceOf(
+      const l1SharedBridge_TokenBalance_Before = await l1Token.balanceOf(
         l1Bridge.address
       );
       const userL1_TokenBalance_Before = await l1Token.balanceOf(walletAddress);
       const userL2_TokenBalance_Before = await l2Token.balanceOf(walletAddress);
 
-      const depositTx = await l1Bridge.populateTransaction[
-        "deposit(address,address,uint256,uint256,uint256,address)"
-      ](
-        walletAddress,
-        l1Token.address,
-        depositAmount,
-        BigNumber.from(10_000_000),
-        utils.REQUIRED_L1_TO_L2_GAS_PER_PUBDATA_LIMIT,
-        walletAddress
-      );
-
-      // call to RPC method zks_estimateGasL1ToL2 to estimate L2 gas limit
-      const l2GasLimit = await zkProvider.estimateGasL1(depositTx);
-      const l2GasPrice = await zkProvider.getGasPrice();
-
-      const baseCost = await deployer.getBaseCost({
-        gasLimit: l2GasLimit,
-        gasPrice: l2GasPrice,
-        gasPerPubdataByte: utils.REQUIRED_L1_TO_L2_GAS_PER_PUBDATA_LIMIT,
+      const depositTx = await deployer.deposit({
+        token: l1Token.address,
+        amount: depositAmount,
+        bridgeAddress: ADDRESSES.Bridges.L1SharedBridgeProxy,
+        approveERC20: true,
       });
-
-      const depositResponse = await l1Bridge[
-        "deposit(address,address,uint256,uint256,uint256,address)"
-      ](
-        walletAddress,
-        l1Token.address,
-        depositAmount,
-        l2GasLimit,
-        utils.REQUIRED_L1_TO_L2_GAS_PER_PUBDATA_LIMIT,
-        walletAddress,
-        {
-          gasLimit,
-          value: baseCost,
-        }
-      );
-
-      await depositResponse.wait();
-
-      const l2Response = await zkProvider.getL2TransactionFromPriorityOp(
-        depositResponse
-      );
-      await l2Response.wait();
+      await depositTx.waitFinalize();
 
       /**
        * Afters
        */
       const l2Token_TotalSupply_After = await l2Token.totalSupply();
-      const l1ERC20Bridge_TokenBalance_After = await l1Token.balanceOf(
+      const l1SharedBridge_TokenBalance_After = await l1Token.balanceOf(
         l1Bridge.address
       );
       const userL1_TokenBalance_After = await l1Token.balanceOf(walletAddress);
@@ -177,7 +154,9 @@ describe("~~~ Bridge E2E testing", async () => {
        * Diffs
        */
       const l1Token_TotalSupply_Difference =
-        l1ERC20Bridge_TokenBalance_After.sub(l1ERC20Bridge_TokenBalance_Before);
+        l1SharedBridge_TokenBalance_After.sub(
+          l1SharedBridge_TokenBalance_Before
+        );
       const l2Token_TotalSupply_Difference = l2Token_TotalSupply_After.sub(
         l2Token_TotalSupply_Before
       );
@@ -213,7 +192,7 @@ describe("~~~ Bridge E2E testing", async () => {
       );
     });
 
-    it("> Withdraw tokens from L2 via L2ERC20Bridge", async () => {
+    it("> Withdraw tokens from L2 via L2 Shared Bridge", async () => {
       const {
         l1: { l1Token, l1Bridge },
         l2: {
@@ -222,7 +201,7 @@ describe("~~~ Bridge E2E testing", async () => {
           accounts: { deployer },
         },
         withdrawalAmount,
-        gasLimit,
+        ADDRESSES,
       } = ctx;
 
       const walletAddress = deployer.address;
@@ -237,7 +216,7 @@ describe("~~~ Bridge E2E testing", async () => {
         "L2 Withdrawals should be enabled"
       );
 
-      const l1ERC20Bridge_TokenBalance_Before = await l1Token.balanceOf(
+      const l1SharedBridge_TokenBalance_Before = await l1Token.balanceOf(
         l1Bridge.address
       );
       const l2Token_TotalSupply_Before = await l2Token.totalSupply();
@@ -245,16 +224,14 @@ describe("~~~ Bridge E2E testing", async () => {
       const userL2_TokenBalance_Before = await l2Token.balanceOf(walletAddress);
 
       // Execute withdraw
-      const withdrawResponse = await l2Bridge.withdraw(
-        walletAddress,
-        l2Token.address,
-        withdrawalAmount,
-        { gasLimit }
-      );
+      const withdrawTx = await deployer.withdraw({
+        token: l2Token.address,
+        amount: withdrawalAmount,
+        bridgeAddress: ADDRESSES.Bridges.L2SharedBridgeProxy,
+      });
+      await withdrawTx.waitFinalize();
 
-      await withdrawResponse.waitFinalize();
-
-      withdrawTxHash = withdrawResponse.hash;
+      withdrawTxHash = withdrawTx.hash;
       const finalizeWithdrawalResponse = await deployer.finalizeWithdrawal(
         withdrawTxHash
       );
@@ -262,7 +239,7 @@ describe("~~~ Bridge E2E testing", async () => {
 
       // Checks
       const l2Token_TotalSupply_After = await l2Token.totalSupply();
-      const l1ERC20Bridge_TokenBalance_After = await l1Token.balanceOf(
+      const l1SharedBridge_TokenBalance_After = await l1Token.balanceOf(
         l1Bridge.address
       );
       const userL1_TokenBalance_After = await l1Token.balanceOf(walletAddress);
@@ -271,8 +248,10 @@ describe("~~~ Bridge E2E testing", async () => {
       const l1Token_TotalSupply_Difference = l2Token_TotalSupply_Before.sub(
         l2Token_TotalSupply_After
       );
-      const l1ERC20Bridge_TokenBalance_Difference =
-        l1ERC20Bridge_TokenBalance_Before.sub(l1ERC20Bridge_TokenBalance_After);
+      const l1SharedBridge_TokenBalance_Difference =
+        l1SharedBridge_TokenBalance_Before.sub(
+          l1SharedBridge_TokenBalance_After
+        );
       const l1Token_UserBalance_Difference = userL1_TokenBalance_After.sub(
         userL1_TokenBalance_Before
       );
@@ -288,8 +267,8 @@ describe("~~~ Bridge E2E testing", async () => {
 
       // L1 token balance owned by bridge should decrease
       expect(
-        l1ERC20Bridge_TokenBalance_Difference.eq(withdrawalAmount),
-        `Value ${l1ERC20Bridge_TokenBalance_Difference.toString()} is not equal to ${withdrawalAmount.toString()}`
+        l1SharedBridge_TokenBalance_Difference.eq(withdrawalAmount),
+        `Value ${l1SharedBridge_TokenBalance_Difference.toString()} is not equal to ${withdrawalAmount.toString()}`
       );
 
       // L1 token balance owned by user should increase
@@ -319,7 +298,7 @@ describe("~~~ Bridge E2E testing", async () => {
 
       await expect(
         deployer.finalizeWithdrawal(withdrawTxHash)
-      ).to.be.revertedWith("Withdrawal is already finalized");
+      ).to.be.revertedWith("revert: Withdrawal is already finalized");
     });
   });
 });
